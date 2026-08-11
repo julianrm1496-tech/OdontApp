@@ -1,0 +1,932 @@
+:root{
+  --paper:#F1F5F9;
+  --surface:#FFFFFF;
+  --pine:#0B0F14;
+  --pine-soft:#0EA5E9;
+  --pine-dark:#0369A1;
+  --sage:#0EA5E9;
+  --sage-wash:#E0F2FE;
+  --clay:#A32D2D;
+  --clay-wash:#FCEBEB;
+  --amber:#854F0B;
+  --amber-wash:#FAEEDA;
+  --green:#1D9E75;
+  --green-dark:#0F6E56;
+  --green-wash:#E1F5EE;
+  --ink:#0F172A;
+  --ink-2:#64748B;
+  --ink-3:#5E6B7A;
+  --line:#E2E8F0;
+  --line-strong:#CBD5E1;
+  --r:10px;
+  --shadow:0 1px 2px rgba(15,23,42,.06),0 1px 3px rgba(15,23,42,.08);
+  --shadow-md:0 8px 24px rgba(15,23,42,.12);
+  --shadow-3d:0 4px 12px rgba(15,23,42,.08),0 1px 2px rgba(15,23,42,.04);
+  --shadow-3d-hover:0 12px 26px rgba(15,23,42,.14);
+  --glow:0 0 0 4px rgba(14,165,233,.18);
+  --ease-bounce:cubic-bezier(.34,1.56,.64,1);
+}
+
+/* ---------- modo oscuro (mismo criterio que FactuPro: variables
+   semánticas que ya usa toda la app, así casi nada más necesita tocarse) ---------- */
+[data-tema="oscuro"]{
+  --paper:#0B0F14;
+  --surface:#131A22;
+  --pine:#0F161D;
+  --pine-soft:#0EA5E9;
+  --pine-dark:#7DD3FC;
+  --sage:#0EA5E9;
+  --sage-wash:rgba(14,165,233,.16);
+  --clay:#F87171;
+  --clay-wash:rgba(239,68,68,.16);
+  --amber:#FBBF24;
+  --amber-wash:rgba(245,158,11,.16);
+  --green:#34D399;
+  --green-dark:#4ADE9E;
+  --green-wash:rgba(29,158,117,.18);
+  --ink:#E8EEF4;
+  --ink-2:#94A3B8;
+  --ink-3:#7C8CA0;
+  --line:#263241;
+  --line-strong:#37475A;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 1px 3px rgba(0,0,0,.3);
+  --shadow-md:0 8px 24px rgba(0,0,0,.5);
+  --shadow-3d:0 4px 12px rgba(0,0,0,.35),0 1px 2px rgba(0,0,0,.2);
+  --shadow-3d-hover:0 12px 26px rgba(0,0,0,.45);
+}
+[data-tema="oscuro"] select option{background:var(--surface);color:var(--ink)}
+[data-tema="oscuro"] .foto-item, [data-tema="oscuro"] .foto-rota{background:var(--paper)}
+
+*{box-sizing:border-box;margin:0;padding:0}
+
+html{overflow-x:hidden;width:100%}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  background:var(--paper);
+  color:var(--ink);
+  font-size:14px;
+  line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;width:100%;max-width:100vw;
+}
+#root{overflow-x:hidden}
+
+
+
+button{font-family:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{
+  outline:none;box-shadow:var(--glow)
+}
+
+/* ---------- estructura ---------- */
+.shell{min-height:100vh}
+
+/* Barra superior fija: hamburguesa + sección actual + buscador.
+   Igual en PC y en celular, siempre visible arriba. */
+.topbar{
+  position:fixed;top:0;left:0;right:0;height:56px;z-index:60;
+  background:var(--surface);border-bottom:1px solid var(--line);
+  display:flex;align-items:center;gap:12px;padding:0 20px;
+}
+.topbar-menu-btn{
+  width:36px;height:36px;flex-shrink:0;border-radius:var(--r);
+  border:1px solid var(--line);background:var(--surface);color:var(--ink-2);
+  display:flex;align-items:center;justify-content:center;transition:.15s ease;
+}
+.topbar-menu-btn:hover{background:var(--paper);color:var(--ink);border-color:var(--line-strong)}
+.topbar-seccion{display:flex;align-items:center;gap:9px;min-width:0}
+.topbar-icon{
+  width:28px;height:28px;flex-shrink:0;border-radius:8px;
+  background:var(--sage-wash);color:var(--pine-dark);
+  display:flex;align-items:center;justify-content:center;
+}
+.topbar-title{font-size:14.5px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* Menú lateral: en celular es un cajón que se superpone (overlay + fondo
+   oscuro) y se cierra al elegir una sección. En PC es un panel fijo que
+   empuja el contenido — arranca visible y se puede ocultar con la
+   hamburguesa para ganar espacio, sin overlay oscuro de por medio. */
+.nav{
+  width:240px;background:var(--pine);color:#fff;
+  padding:20px 14px;display:flex;flex-direction:column;gap:2px;
+  position:fixed;left:-260px;top:0;height:100vh;
+  transition:left .25s cubic-bezier(.4,0,.2,1);z-index:100;box-shadow:var(--shadow-md);
+}
+.nav.abierto{left:0}
+@media(min-width:881px){
+  .sidebar-overlay{display:none!important}
+  .topbar{transition:left .25s cubic-bezier(.4,0,.2,1)}
+  .main{transition:margin-left .25s cubic-bezier(.4,0,.2,1)}
+  .shell.nav-abierto .topbar{left:240px}
+  .shell.nav-abierto .main{margin-left:240px}
+}
+.brand{padding:0 6px 22px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.brand .mark{font-size:22px;font-weight:700;letter-spacing:-.5px;line-height:1}
+.brand .mark span{color:var(--pine-soft)}
+.brand .sub{font-size:10.5px;color:var(--sage);letter-spacing:.1em;text-transform:uppercase;margin-top:5px}
+.nav-cerrar{
+  background:none;border:0;color:rgba(255,255,255,.55);width:30px;height:30px;
+  border-radius:var(--r);display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.nav-cerrar:hover{background:rgba(255,255,255,.08);color:#fff}
+.nav a{
+  display:flex;align-items:center;gap:11px;
+  color:rgba(255,255,255,.65);text-decoration:none;
+  font-size:13.5px;padding:9px 12px;border-radius:var(--r);transition:.18s cubic-bezier(.4,0,.2,1);
+}
+.nav a:hover{background:rgba(255,255,255,.06);color:#fff;transform:translateX(2px)}
+.nav a.on{background:rgba(14,165,233,.15);color:var(--pine-soft);font-weight:600;
+          box-shadow:inset 2px 0 0 var(--pine-soft)}
+.nav .ic{flex-shrink:0;opacity:.9}
+.nav-foot{margin-top:auto;padding-top:14px;display:flex;flex-direction:column;gap:2px}
+.nav-version{font-size:10px;color:rgba(255,255,255,.28);padding:10px 11px 0;letter-spacing:.03em}
+
+.sidebar-overlay{
+  display:none;position:fixed;inset:0;background:rgba(11,15,20,.4);
+  z-index:99;backdrop-filter:blur(2px);
+}
+.sidebar-overlay.abierto{display:block}
+
+/* ---------- mostrar bloques distintos en escritorio vs. celular ---------- */
+.hide-mobile-block{display:block}
+.lista-vert{display:flex;flex-direction:column;gap:8px}
+.show-mobile-block{display:none}
+@media(max-width:880px){
+  .hide-mobile-block{display:none}
+  .show-mobile-block{display:block}
+}
+
+/* ---------- tarjeta compacta de una sola fila (celular) ---------- */
+.lista-tarjetas{display:flex;flex-direction:column;gap:8px}
+.fc-compact{
+  background:var(--surface);border:1px solid var(--line);border-radius:12px;
+  overflow:hidden;transition:border-color .18s ease,box-shadow .18s ease;
+}
+.fc-compact.abierta{border-color:var(--pine-soft);box-shadow:0 0 0 1px var(--sage-wash)}
+.fc-fila{display:flex;align-items:center;gap:10px;padding:12px 13px;cursor:pointer;min-height:58px}
+.fc-fila:active{background:var(--paper)}
+.fc-info{flex:1;min-width:0}
+.fc-titulo{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.fc-numero{font-size:14.5px;font-weight:700;color:var(--ink)}
+.fc-sub{font-size:12px;color:var(--ink-3);margin-top:2px}
+.fc-monto{font-size:14.5px;font-weight:700;color:var(--ink);white-space:nowrap;font-variant-numeric:tabular-nums}
+.fc-toggle{
+  width:36px;height:36px;border-radius:var(--r);flex-shrink:0;
+  border:1px solid var(--line);background:var(--surface);
+  display:flex;align-items:center;justify-content:center;color:var(--ink-2);
+  transition:.15s ease;font-size:13px;
+}
+.fc-compact.abierta .fc-toggle{background:var(--sage-wash);border-color:var(--pine-soft);color:var(--pine-dark)}
+.fc-acciones{display:flex;gap:6px;padding:10px 13px;border-top:1px solid var(--line);animation:fadeSlideUp .22s var(--ease-bounce)}
+@keyframes fadeSlideUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.fc-accion-principal{
+  flex:1;height:42px;border-radius:var(--r);background:var(--pine-dark);color:#fff;border:0;
+  display:flex;align-items:center;justify-content:center;gap:6px;font-size:13.5px;font-weight:600;
+}
+.fc-accion{
+  width:42px;height:42px;border-radius:var(--r);flex-shrink:0;
+  border:1px solid var(--line);background:var(--surface);color:var(--ink-2);
+  display:flex;align-items:center;justify-content:center;
+}
+.fc-accion.peligro{color:var(--clay);border-color:#FCA5A5}
+.nav-foot button{
+  display:flex;align-items:center;gap:9px;
+  background:none;border:0;color:rgba(255,255,255,.5);
+  font-size:12.5px;padding:8px 11px;border-radius:var(--r);width:100%;text-align:left;
+}
+.nav-foot button:hover{background:rgba(255,255,255,.08);color:#fff}
+
+.main{flex:1;min-width:0;padding:84px 40px 64px;max-width:1440px}
+
+/* ---------- encabezados ---------- */
+.head{margin-bottom:22px}
+.eyebrow{font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px}
+h1{font-weight:700;font-size:26px;line-height:1.2;letter-spacing:-.015em}
+.lede{color:var(--ink-2);font-size:14px;margin-top:7px;max-width:62ch}
+
+/* ---------- tarjetas ---------- */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;
+      transition:box-shadow .2s ease,border-color .2s ease}
+.card:hover{box-shadow:var(--shadow)}
+.card h2{font-size:14px;font-weight:600;margin-bottom:14px;display:flex;align-items:center;gap:9px}
+
+/* El título de cualquier tarjeta con tabla o lista se queda visible al bajar */
+.card:has(.tabla-scroll) > h2:first-child,
+.card:has(table) > h2:first-child,
+.card:has(.evo) > h2:first-child{
+  position:sticky;top:56px;z-index:5;background:var(--surface);
+  padding-top:2px;margin:-2px -2px 14px;padding-left:2px;padding-right:2px;
+}
+
+/* NOTA: los encabezados de tabla fijos (sticky) se intentaron aquí y
+   se revirtieron — .tabla-scroll tiene overflow-x:auto, lo que por la
+   spec de CSS obliga a que su overflow-y también sea "auto" (no puede
+   quedar "visible" si el otro eje no lo es). Eso vuelve a .tabla-scroll
+   el contenedor de referencia del sticky en vez de la página, y como
+   .tabla-scroll nunca hace scroll interno (el que hace scroll es la
+   página completa), el "top" fijo termina empujando el thead hacia abajo
+   de forma permanente, encimándose con las filas — el bug que viste en
+   Inventario. Para hacerlo bien hace falta que la tabla tenga su propio
+   contenedor con scroll vertical real; lo dejo pendiente. */
+.card h2::before{content:'';width:3px;height:15px;background:var(--pine-soft);border-radius:2px;flex-shrink:0}
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:1fr 1fr}
+.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+
+/* ---------- barra de filtros ---------- */
+.barra-filtros{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+
+/* ---------- filtro de rango de fechas (Pagos, Bioseguridad, RIPS) ---------- */
+.filtro-fechas{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.ff-presets{display:flex;gap:6px;flex-wrap:wrap}
+.ff-presets button{
+  font-size:12px;font-weight:600;padding:6px 12px;border-radius:99px;
+  border:1px solid var(--line);background:var(--surface);color:var(--ink-2);transition:.14s ease;
+}
+.ff-presets button:hover{background:var(--paper);color:var(--ink);border-color:var(--line-strong)}
+.ff-presets button.on{background:var(--pine);border-color:var(--pine);color:#fff}
+.ff-rango{
+  display:flex;align-items:center;background:var(--surface);
+  border:1px solid var(--line);border-radius:var(--r);padding:2px 4px 2px 0;
+}
+.ff-campo{display:flex;flex-direction:column;padding:5px 10px;position:relative;cursor:pointer}
+.ff-campo span{font-size:9px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-3)}
+.ff-campo input{
+  border:0;padding:0;margin-top:1px;font-size:12.5px;font-weight:600;color:var(--ink);
+  background:none;width:98px;cursor:pointer;
+}
+.ff-guion{color:var(--line-strong);font-size:13px;font-weight:600}
+
+/* ---------- toggle segmentado (Día / Semana en Agenda) ---------- */
+.seg{
+  display:inline-flex;background:var(--paper);border:1px solid var(--line);
+  border-radius:var(--r);padding:3px;gap:2px;flex-shrink:0;
+}
+.seg button{
+  border:0;background:transparent;padding:7px 15px;border-radius:7px;
+  font-size:12.5px;font-weight:500;color:var(--ink-2);transition:.15s ease;
+}
+.seg button:hover:not(.on){color:var(--ink)}
+.seg button.on{background:var(--surface);color:var(--ink);font-weight:600;box-shadow:var(--shadow)}
+
+/* ---------- variación mes a mes ---------- */
+.delta{font-weight:600}
+.delta.up{color:var(--green-dark)}
+.delta.down{color:var(--clay)}
+
+/* ---------- gráfico de barras ---------- */
+.grafico{width:100%}
+.barras{display:flex;align-items:flex-end;gap:5px;width:100%}
+.barra-col{display:flex;flex-direction:column;justify-content:flex-end;height:100%;gap:5px}
+.barra-valor{font-size:9.5px;color:var(--ink-3);text-align:center;white-space:nowrap;
+             overflow:hidden;text-overflow:ellipsis}
+.barra-pista{flex:1;display:flex;align-items:flex-end}
+.barra{width:100%;background:linear-gradient(180deg,var(--pine-soft),var(--pine-dark));
+       border-radius:5px 5px 2px 2px;transition:height .4s var(--ease-bounce);min-height:2px}
+.barra-col:hover .barra{filter:brightness(1.12)}
+.barra-etiqueta{font-size:10.5px;color:var(--ink-2);text-align:center}
+
+/* ---------- barra de progreso ---------- */
+.progreso-wrap{display:flex;align-items:center;gap:11px;margin-bottom:14px}
+.progreso-pista{flex:1;height:7px;background:var(--line);border-radius:99px;overflow:hidden}
+.progreso-fill{height:100%;background:var(--pine-soft);border-radius:99px;transition:width .4s ease}
+.progreso-txt{font-size:12px;color:var(--ink-2);white-space:nowrap;font-variant-numeric:tabular-nums}
+
+/* ---------- alerta de alergia ---------- */
+.alerta-alergia{
+  display:flex;align-items:center;gap:13px;margin-bottom:14px;
+  background:var(--clay-wash);border:1px solid #F3C6C6;border-left:4px solid var(--clay);
+  border-radius:var(--r);padding:13px 16px;
+}
+.alerta-alergia .ic{font-size:19px;color:var(--clay);flex-shrink:0}
+.alerta-alergia div{display:flex;flex-direction:column;gap:1px}
+.alerta-alergia strong{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--clay)}
+.alerta-alergia span{font-size:14px;color:var(--ink)}
+
+/* ---------- iconos de acción en tablas ---------- */
+.acciones{
+  text-align:right;white-space:nowrap;
+  position:sticky;right:0;
+  box-shadow:-8px 0 8px -8px rgba(15,23,42,.12);
+}
+.acciones button+button{margin-left:6px}
+td.acciones{background:var(--surface)}
+th.acciones{background:var(--paper)}
+tr.clickable td.acciones{background:var(--surface)}
+tr.clickable:hover td.acciones{background:var(--sage-wash)}
+tr.fila-vencida td.acciones{background:var(--clay-wash)}
+.icono{
+  background:none;border:1px solid transparent;border-radius:9px;
+  width:38px;height:38px;font-size:15px;color:var(--ink-2);
+  transition:.14s;line-height:1;display:inline-flex;align-items:center;justify-content:center;
+}
+.icono:hover{background:var(--paper);border-color:var(--line);color:var(--ink)}
+.icono.danger:hover{background:var(--clay-wash);border-color:#FCA5A5;color:var(--clay)}
+.celda-nombre{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.franja{width:3px;height:15px;border-radius:2px;flex-shrink:0;background:var(--line)}
+.franja.ok{background:var(--green)}
+.franja.soon{background:var(--amber)}
+.franja.warn{background:var(--clay)}
+tr.fila-vencida td{background:var(--clay-wash)}
+
+/* ---------- agenda ---------- */
+.agenda-mes{font-size:13.5px;font-weight:700}
+.resumen-dia-cab{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+.resumen-dia-cab h2{margin:0;border:0;padding:0}
+.resumen-dia-cab h2::before{content:none}
+.pill-count{background:var(--sage-wash);color:var(--pine-dark);font-size:12px;font-weight:700;
+            padding:4px 11px;border-radius:99px;flex-shrink:0}
+
+.lista-citas{display:flex;flex-direction:column;gap:8px}
+.cita{display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--surface);
+      border:1px solid var(--line);border-radius:12px;border-left:3px solid var(--line)}
+.cita-hora{display:flex;flex-direction:column;align-items:flex-end;width:50px;flex-shrink:0;text-align:right}
+.cita-hora strong{font-size:13.5px;font-variant-numeric:tabular-nums}
+.cita-hora span{font-size:10px;color:var(--ink-3)}
+.cita-cuerpo{display:flex;align-items:center;gap:9px;flex:1;min-width:0;cursor:default}
+.cita-nom.link{cursor:pointer}
+.cita-av{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+         font-size:11px;font-weight:700;flex-shrink:0}
+.cita-info{flex:1;min-width:0}
+.cita-nom{font-size:13.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cita-nom.link{color:var(--pine-dark)}
+.cita-nom.link:hover{text-decoration:underline}
+.cita-secundaria{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.cita-estado{
+  border:0;border-radius:99px;padding:5px 10px 5px 11px;font-size:11px;font-weight:700;
+  appearance:none;-webkit-appearance:none;background-image:none;
+}
+
+.huecos{display:flex;gap:8px;flex-wrap:wrap}
+.hueco{display:flex;flex-direction:column;gap:2px;align-items:flex-start;
+       background:var(--surface);border:1px dashed var(--line-strong);border-radius:var(--r);
+       padding:9px 14px;font-size:12.5px;color:var(--ink-2);transition:.14s}
+.hueco:hover{border-color:var(--pine-soft);border-style:solid;color:var(--ink);
+             background:var(--sage-wash)}
+.hueco span{font-size:10.5px;color:var(--ink-3)}
+
+.toggle-semana{
+  width:100%;display:flex;align-items:center;justify-content:center;gap:6px;
+  background:none;border:0;border-top:1px dashed var(--line-strong);
+  font-size:12.5px;font-weight:600;color:var(--pine-dark);
+  padding:12px 0 2px;margin-top:18px;
+}
+
+.semana{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;margin-top:14px}
+.dia-col{background:var(--surface);border:1px solid var(--line);border-radius:12px;
+         overflow:hidden;min-height:150px;display:flex;flex-direction:column}
+.dia-col.hoy{border-color:var(--pine-soft);box-shadow:inset 0 0 0 1px var(--pine-soft)}
+.dia-cab{padding:9px;text-align:center;background:var(--paper);cursor:pointer;
+         border-bottom:1px solid var(--line);transition:.14s}
+.dia-cab:hover{background:var(--sage-wash)}
+.dia-nom{display:block;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
+.dia-num{display:block;font-size:16px;font-weight:700}
+.dia-col.hoy .dia-num{color:var(--pine-dark)}
+.dia-body{padding:7px;display:flex;flex-direction:column;gap:5px;flex:1}
+.cita-mini{background:var(--paper);border-left:3px solid var(--line);border-radius:6px;
+           padding:5px 7px;cursor:pointer;transition:.14s}
+.cita-mini:hover{background:var(--sage-wash)}
+.cita-mini .h{display:block;font-size:10.5px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.cita-mini .n{display:block;font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hueco-mini{flex:1;background:none;border:1px dashed var(--line);border-radius:7px;
+            color:var(--ink-3);font-size:16px;transition:.14s;min-height:40px}
+.hueco-mini:hover{border-color:var(--pine-soft);color:var(--pine-soft);background:var(--sage-wash)}
+
+/* ---------- calendario de bioseguridad ---------- */
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;margin-bottom:14px}
+.cal-cab{text-align:center;font-size:10px;letter-spacing:.06em;color:var(--ink-3);padding-bottom:3px}
+.cal-dia{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+         border-radius:8px;font-size:12px;border:1px solid transparent;position:relative}
+.cal-dia.completo{background:var(--green-wash);color:var(--green-dark);font-weight:600}
+.cal-dia.parcial{background:var(--amber-wash);color:var(--amber)}
+.cal-dia.vacio{background:var(--paper);color:var(--ink-3)}
+.cal-dia.futuro{color:var(--ink-3);opacity:.45}
+.cal-dia.hoy{border-color:var(--pine-soft);box-shadow:inset 0 0 0 1px var(--pine-soft)}
+.cal-dia .puntos{font-size:8px;line-height:1;letter-spacing:1px}
+.cal-leyenda{display:flex;gap:16px;flex-wrap:wrap;align-items:center;font-size:11.5px;color:var(--ink-2)}
+.cal-leyenda div{display:flex;align-items:center;gap:6px}
+.cal-leyenda .sw{width:11px;height:11px;border-radius:3px;border:0}
+.cal-leyenda .sw.completo{background:var(--green-wash)}
+.cal-leyenda .sw.parcial{background:var(--amber-wash)}
+.cal-leyenda .sw.vacio{background:var(--paper);border:1px solid var(--line)}
+
+/* ---------- identidad visual de bioseguridad ---------- */
+.bio-card{border-left:3px solid var(--line);position:relative}
+.bio-verde{border-left-color:var(--green)}
+.bio-verde h2::before{background:var(--green)}
+.bio-ambar{border-left-color:var(--amber)}
+.bio-ambar h2::before{background:var(--amber)}
+.bio-azul{border-left-color:var(--pine-soft)}
+.bio-azul h2::before{background:var(--pine-soft)}
+.metodos{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px}
+
+/* ---------- buscador global (vive en el topbar) ---------- */
+.btn-buscar{
+  display:inline-flex;align-items:center;gap:8px;flex-shrink:0;
+  background:var(--surface);border:1px solid var(--line);
+  color:var(--ink-2);font-size:13px;text-align:left;
+  padding:8px 14px;border-radius:var(--r);transition:.15s;
+}
+.btn-buscar:hover{background:var(--paper);color:var(--ink);border-color:var(--line-strong)}
+.buscador-overlay{align-items:flex-start;padding-top:12vh}
+.buscador{background:var(--surface);border-radius:14px;width:100%;max-width:520px;
+          box-shadow:var(--shadow-md);overflow:hidden;animation:slideUp .2s cubic-bezier(.4,0,.2,1)}
+.buscador>input{border:0;border-radius:0;border-bottom:1px solid var(--line);
+                font-size:16px;padding:16px 18px;background:var(--surface)}
+.buscador>input:focus{box-shadow:none;border-bottom-color:var(--pine-soft)}
+.buscador-res{max-height:52vh;overflow-y:auto;padding:8px}
+.buscador-res .nota{padding:18px;text-align:center}
+.buscador-item{display:flex;align-items:center;justify-content:space-between;gap:12px;
+               padding:11px 13px;border-radius:9px;cursor:pointer;transition:.12s}
+.buscador-item:hover{background:var(--sage-wash)}
+.bi-nom{display:flex;align-items:center;gap:8px;font-size:14px}
+
+/* ---------- radiografías ---------- */
+.grid-fotos{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px}
+.foto-item{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--paper)}
+.foto-item img{width:100%;aspect-ratio:4/3;object-fit:cover;cursor:pointer;display:block;transition:.15s}
+.foto-item img:hover{opacity:.88}
+.foto-rota{aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;
+           color:var(--ink-3);font-size:12px;background:var(--paper)}
+.foto-pie{display:flex;justify-content:space-between;align-items:center;padding:7px 9px}
+.foto-ampliada{max-width:92vw;max-height:88vh;border-radius:10px;object-fit:contain}
+
+
+/* ---------- tira de días tipo calendario (Agenda) ---------- */
+.tira-dias{display:flex;gap:6px;align-items:stretch;margin-top:12px;overflow-x:auto;padding-bottom:2px}
+.tira-flecha{
+  width:32px;flex-shrink:0;border-radius:9px;border:1px solid var(--line);
+  background:var(--surface);color:var(--ink-2);font-size:16px;
+}
+.tira-flecha:hover{background:var(--paper);color:var(--ink)}
+.tira-dia{
+  flex:1;min-width:46px;display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:8px 4px;border-radius:11px;border:1px solid var(--line);
+  background:var(--surface);cursor:pointer;transition:.14s;
+}
+.tira-dia:hover{border-color:var(--pine-soft)}
+.tira-dia.hoy{border-color:var(--pine-soft);box-shadow:inset 0 0 0 1px var(--pine-soft)}
+.tira-dia.elegido{background:var(--pine);border-color:var(--pine)}
+.tira-nom{font-size:10px;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-3)}
+.tira-dia.elegido .tira-nom{color:rgba(255,255,255,.6)}
+.tira-num{font-size:15px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums}
+.tira-dia.elegido .tira-num{color:#fff}
+.tira-punto{width:4px;height:4px;border-radius:50%;background:transparent;margin-top:1px}
+.tira-punto.on{background:var(--pine-soft)}
+.tira-dia.elegido .tira-punto.on{background:#fff}
+
+.cal-jump{
+  position:relative;display:inline-flex;align-items:center;justify-content:center;gap:0;
+  width:38px;height:38px;border:1px solid var(--line);border-radius:var(--r);
+  background:var(--surface);cursor:pointer;color:var(--ink-2);flex-shrink:0;
+}
+.cal-jump:hover{background:var(--paper)}
+.cal-jump input{
+  position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;padding:0;border:0;
+}
+
+/* botón flotante para "nueva cita" — solo en celular, patrón de app actual */
+.fab-nueva{
+  display:none;position:fixed;right:18px;bottom:22px;z-index:55;
+  width:54px;height:54px;border-radius:50%;background:var(--pine);color:#fff;
+  align-items:center;justify-content:center;box-shadow:0 6px 18px rgba(11,15,20,.32);
+}
+.fab-nueva:hover{background:var(--pine-dark)}
+/* ---------- filas editables del plan múltiple ---------- */
+.filas-plan{display:flex;flex-direction:column;gap:7px}
+.fila-plan{display:grid;grid-template-columns:1fr 80px 110px 38px;gap:8px;align-items:center}
+.fila-plan input{padding:9px 11px}
+.fila-plan .icono:disabled{opacity:.25;cursor:not-allowed}
+
+/* ---------- casilla con texto al lado ---------- */
+.check-linea{display:flex;align-items:center;gap:10px;font-size:13.5px;
+             color:var(--ink-2);cursor:pointer;padding:9px 4px}
+.check-linea input{width:20px;height:20px;flex:none;cursor:pointer}
+
+/* ---------- tabla de cuenta del paciente ---------- */
+.tabla-cuenta{font-size:13.5px}
+.tabla-cuenta th{padding:8px;font-size:10.5px}
+.tabla-cuenta td{padding:10px 8px}
+.metodo{display:flex;flex-direction:column;gap:6px}
+.metodo-cab{display:flex;justify-content:space-between;align-items:baseline;font-size:13px}
+.metodo .progreso-pista{height:6px}
+.split{display:grid;grid-template-columns:1.35fr 1fr;gap:14px}
+.mb{margin-bottom:14px}
+
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px;
+      border-top:3px solid var(--line-strong);box-shadow:var(--shadow-3d);min-width:0;overflow-wrap:anywhere;
+      position:relative;overflow:hidden;
+      transition:transform .22s var(--ease-bounce),box-shadow .22s ease}
+.stat::after{
+  content:'';position:absolute;top:0;left:-120%;width:60%;height:100%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.35),transparent);
+  transform:skewX(-20deg);transition:left .5s ease;pointer-events:none;
+}
+.stat:hover::after{left:150%}
+.stat:hover{transform:translateY(-3px);box-shadow:var(--shadow-3d-hover)}
+.stat .k{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+.stat .v{font-weight:700;font-size:26px;line-height:1.2;margin-top:6px;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+.stat .n{font-size:12px;color:var(--ink-2);margin-top:3px}
+.stat.warn{border-top-color:var(--amber)}
+.stat.warn .n{color:var(--amber);font-weight:600}
+
+/* ---------- controles ---------- */
+button.act{
+  display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  font-size:13px;font-weight:500;background:var(--pine);color:#fff;border:1px solid var(--pine);
+  padding:10px 17px;border-radius:var(--r);transition:.16s cubic-bezier(.4,0,.2,1);
+}
+button.act:hover{background:#1a1f28;border-color:#1a1f28;box-shadow:0 4px 14px rgba(0,0,0,.22)}
+button.act:active{transform:scale(.98)}
+button.act:disabled{opacity:.5;cursor:not-allowed}
+button.ghost{background:var(--surface);color:var(--ink-2);border:1px solid var(--line)}
+button.ghost:hover{background:var(--paper);border-color:var(--line-strong);
+                    color:var(--ink);transform:translateY(-1px);box-shadow:var(--shadow)}
+button.sm{padding:6px 12px;font-size:12px}
+button.danger{background:none;color:var(--clay);border:1px solid #FCA5A5}
+button.danger:hover{background:var(--clay-wash);border-color:var(--clay)}
+button.peligro{background:var(--clay);border-color:var(--clay)}
+button.peligro:hover{background:#8A2424;border-color:#8A2424}
+
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:12.5px;color:var(--ink-2);font-weight:600;display:flex;align-items:center;gap:7px}
+.rips-badge{
+  font-size:9.5px;font-weight:700;letter-spacing:.04em;color:var(--amber);
+  background:var(--amber-wash);padding:1.5px 7px;border-radius:99px;
+}
+.nota-rips{
+  display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink-2);
+  background:var(--paper);border:1px solid var(--line);border-radius:var(--r);
+  padding:9px 12px;margin-bottom:16px;
+}
+input,select,textarea{
+  font-family:inherit;font-size:15px;color:var(--ink);
+  padding:10px 13px;border-radius:var(--r);
+  border:1px solid var(--line);background:var(--paper);width:100%;
+  transition:.15s ease;-webkit-appearance:none;appearance:none;
+}
+input:focus,select:focus,textarea:focus{border-color:var(--pine-soft);background:var(--surface);box-shadow:var(--glow)}
+input::placeholder,textarea::placeholder{color:var(--ink-3)}
+textarea{resize:vertical;min-height:84px;line-height:1.55}
+
+/* ---------- tablas y listas ---------- */
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{text-align:left;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;
+   color:var(--ink-2);font-weight:600;padding:9px 8px;background:var(--paper);
+   border-bottom:1px solid var(--line)}
+td{padding:11px 8px;border-top:1px solid var(--line);vertical-align:middle}
+tr.clickable{cursor:pointer;transition:background .14s ease;position:relative}
+tr.clickable:hover td{background:var(--sage-wash)}
+tr.clickable:hover td:first-child{box-shadow:inset 3px 0 0 var(--pine-soft)}
+
+.row{display:flex;align-items:center;gap:12px;padding:11px 13px;
+     border-radius:var(--r);background:var(--paper);margin-bottom:6px}
+.row:last-child{margin-bottom:0}
+.row .t{font-size:12px;color:var(--ink-2);width:56px;flex-shrink:0;font-variant-numeric:tabular-nums}
+.row .n{font-size:14px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row.clickable{cursor:pointer;transition:.14s}
+.row.clickable:hover{background:var(--sage-wash)}
+.row.apagada{opacity:.5}
+.row.destacada{background:var(--sage-wash);box-shadow:inset 3px 0 0 var(--pine-soft)}
+
+/* ---------- tarjetas de celular (patrón real de FactuPro: JSX propio,
+   no truco de CSS sobre una tabla) ---------- */
+.client-grid{display:flex;flex-direction:column;gap:8px}
+.client-card{
+  background:var(--surface);border:1px solid var(--line);border-radius:12px;
+  padding:11px 12px;transition:.15s ease;
+}
+.client-card:active{transform:scale(.98)}
+.client-card .fila-top{display:flex;gap:9px;align-items:flex-start}
+.client-card .info{flex:1;min-width:0;cursor:pointer}
+.client-card .nombre{font-weight:700;font-size:13.5px;display:flex;align-items:center;gap:4px;min-width:0}
+.client-card .nombre span.txt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.client-card .visitas-inline{margin-left:auto;flex-shrink:0;font-size:11px;font-weight:500;color:var(--ink-3)}
+.client-card .sub-linea{font-size:11.5px;color:var(--ink-2);margin-top:2px;display:flex;align-items:center;gap:4px}
+.client-card .tags-linea{display:flex;gap:6px;margin-top:5px;flex-wrap:wrap;align-items:center}
+.client-card .saldo-linea{font-size:12px;font-weight:700;color:var(--clay)}
+.client-card .acciones-fila{
+  display:flex;justify-content:flex-end;gap:6px;
+  margin-top:8px;padding-top:8px;border-top:1px solid var(--line);
+}
+.client-card .acciones-fila:empty{display:none;margin-top:0;padding-top:0;border-top:0}
+
+/* carrusel horizontal de tarjetas de resumen, solo en celular */
+@media(max-width:880px){
+  .stats-car{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+  .stats-car::-webkit-scrollbar{display:none}
+  .stats-car .stat{flex-shrink:0;min-width:148px}
+}
+
+/* tarjeta de paciente/insumo estilo "app de banco": avatar+nombre a la
+   izquierda, valor a la derecha, acciones en un menú kebab */
+.p-card{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);
+        border-radius:12px;padding:11px 12px;margin-bottom:7px}
+.p-avatar{width:34px;height:34px;border-radius:50%;background:var(--sage-wash);color:var(--pine-dark);
+          display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0}
+.p-info{flex:1;min-width:0;cursor:pointer}
+.p-nombre{font-weight:700;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.p-sub{font-size:11.5px;color:var(--ink-2);margin-top:2px;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.p-derecha{text-align:right;flex-shrink:0;padding-left:2px}
+.p-saldo{font-size:13px;font-weight:700;color:var(--clay)}
+.p-saldo.ok{color:var(--green-dark);font-weight:600;font-size:11.5px}
+.p-menu-wrap{position:relative;flex-shrink:0}
+.p-kebab{width:28px;height:28px;border-radius:8px;border:0;background:transparent;color:var(--ink-3)}
+.p-kebab:hover{background:var(--paper)}
+.menu-overlay{position:fixed;inset:0;z-index:70;background:transparent}
+.menu-desplegable{
+  position:absolute;right:0;top:32px;z-index:71;min-width:150px;
+  background:var(--surface);border:1px solid var(--line);border-radius:11px;
+  box-shadow:var(--shadow-md);padding:5px;display:flex;flex-direction:column;gap:2px;
+}
+.menu-desplegable button{
+  display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;
+  font-size:13px;color:var(--ink);text-align:left;
+}
+.menu-desplegable button:hover{background:var(--paper)}
+.menu-desplegable button.danger{color:var(--clay)}
+.menu-desplegable button.danger:hover{background:var(--clay-wash)}
+
+.factura-card-mobile{
+  background:var(--surface);border:1px solid var(--line);border-radius:12px;
+  padding:10px 12px;transition:.15s ease;
+}
+.factura-card-mobile:active{transform:scale(.98)}
+.fcm-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;cursor:pointer}
+.fcm-actions{display:flex;justify-content:flex-end;gap:6px;margin-top:6px}
+
+.tag{font-size:11px;padding:4px 10px;border-radius:99px;white-space:nowrap;font-weight:600}
+.tag.ok{background:var(--green-wash);color:var(--green-dark)}
+.tag.warn{background:var(--clay-wash);color:var(--clay)}
+.tag.soon{background:var(--amber-wash);color:var(--amber)}
+.tag.neutral{background:var(--paper);color:var(--ink-2);border:1px solid var(--line)}
+
+.num{font-variant-numeric:tabular-nums}
+
+.empty{text-align:center;padding:46px 20px;color:var(--ink-2)}
+.empty .big{font-weight:700;font-size:18px;color:var(--ink);margin-bottom:7px}
+.empty p{font-size:13.5px;max-width:38ch;margin:0 auto 18px}
+
+.card-head{display:flex;justify-content:space-between;align-items:center;
+           gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.card-head h2{margin:0}
+
+.grupo{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;
+       color:var(--ink-3);margin-bottom:10px;padding-bottom:7px;
+       border-bottom:1px solid var(--line)}
+
+tr.fila-grupo-mes td{
+  background:var(--paper);color:var(--ink-3);
+  font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  padding:8px 14px;border:0;
+}
+tr.fila-grupo-mes:hover td{background:var(--paper)}
+
+.nota{font-size:13.5px;color:var(--ink-2)}
+.sub{font-size:13px;color:var(--ink-2)}
+
+.tabla-scroll{overflow-x:auto;overflow-y:visible}
+.tabla-scroll table{min-width:620px}
+
+.loading{padding:40px;text-align:center;color:var(--ink-3);font-size:13.5px}
+
+/* ---------- odontograma ---------- */
+.arcadas{display:flex;flex-direction:column;gap:7px;align-items:center}
+.arch{display:flex;justify-content:center}
+.quad{display:flex;gap:20px;align-items:flex-start}
+.teeth{display:flex;gap:5px;align-items:flex-start}
+
+.diente{display:flex;flex-direction:column;align-items:center;gap:3px}
+.diente svg{display:block}
+.diente .cara{cursor:pointer;transition:fill .12s}
+.diente .cara:hover{stroke:var(--pine);stroke-width:1.8}
+
+.num-pieza{background:none;border:0;padding:1px 3px;border-radius:4px;
+           font-family:inherit;font-size:9.5px;color:var(--ink-3);
+           font-variant-numeric:tabular-nums;transition:.14s}
+.num-pieza:hover{background:var(--sage-wash);color:var(--pine)}
+
+.legend{display:flex;gap:18px;justify-content:center;flex-wrap:wrap;
+        margin-top:20px;padding-top:16px;border-top:1px solid var(--line)}
+.legend div{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--ink-2)}
+.sw{width:13px;height:13px;border-radius:3px;border:1.5px solid var(--line)}
+.hint{font-size:12px;color:var(--ink-3);text-align:center;margin-top:13px;font-style:italic}
+
+/* ---------- menú contextual del odontograma ---------- */
+.odo-overlay{position:fixed;inset:0;z-index:70;background:transparent}
+.odo-menu{
+  position:fixed;z-index:71;background:var(--surface);border:1px solid var(--line);
+  border-radius:12px;padding:10px;box-shadow:var(--shadow-md);
+  max-height:340px;overflow-y:auto;
+}
+.odo-menu-titulo{font-size:11px;letter-spacing:.06em;text-transform:uppercase;
+                  color:var(--ink-3);padding:2px 6px 8px}
+.odo-menu hr{border:0;border-top:1px solid var(--line);margin:4px 0 6px}
+.odo-menu .fila{display:flex;align-items:center;justify-content:space-between;
+                gap:10px;padding:7px 6px;border-radius:8px}
+.odo-menu .fila:hover{background:var(--paper)}
+.odo-menu .fila .lab{font-size:12.5px;color:var(--ink)}
+.odo-menu .dots{display:flex;gap:6px;flex-shrink:0}
+.odo-menu .dot{
+  width:28px;height:28px;border-radius:50%;border:1px solid var(--line);
+  background:var(--paper);padding:0;display:flex;align-items:center;justify-content:center;
+  transition:.12s;flex-shrink:0;
+}
+.odo-menu .dot:hover{background:var(--surface);border-color:var(--pine);transform:scale(1.08)}
+.odo-menu .borrar{
+  width:100%;text-align:left;background:none;border:0;padding:8px 6px;
+  font-size:12.5px;color:var(--clay);border-radius:8px;
+}
+.odo-menu .borrar:hover{background:var(--clay-wash)}
+
+/* ---------- ficha de paciente ---------- */
+.patient-head{display:flex;align-items:center;gap:15px;margin-bottom:18px;flex-wrap:wrap}
+.patient-head-info{flex:1 1 200px;min-width:0}
+.avatar{width:48px;height:48px;border-radius:50%;background:var(--sage-wash);color:var(--pine);
+        display:flex;align-items:center;justify-content:center;
+        font-weight:700;font-size:16px;flex-shrink:0}
+.avatar-sm{width:30px;height:30px;font-size:11px;font-family:inherit;font-weight:700}
+.patient-head .nm{font-weight:700;font-size:19px;line-height:1.25}
+.patient-head .meta{font-size:12.5px;color:var(--ink-2)}
+
+.kv{display:flex;justify-content:space-between;gap:14px;padding:9px 0;
+    border-bottom:1px solid var(--line);font-size:13.5px;min-width:0}
+.kv:last-child{border-bottom:0}
+.kv .k{color:var(--ink-2);min-width:0}
+.kv .v{text-align:right;font-weight:500;min-width:0;overflow-wrap:break-word}
+
+.evo{border-left:2px solid var(--line);padding-left:18px;margin-left:5px}
+.evo-item{position:relative;padding-bottom:18px}
+.evo-item:last-child{padding-bottom:0}
+.evo-item::before{content:'';position:absolute;left:-23px;top:6px;width:8px;height:8px;
+                  border-radius:50%;background:var(--sage);border:2px solid var(--surface)}
+.evo-item .d{font-size:10.5px;color:var(--ink-3);letter-spacing:.05em;text-transform:uppercase;
+             display:flex;justify-content:space-between;align-items:center;gap:10px}
+.evo-acciones{display:flex;gap:2px;flex-shrink:0}
+.evo-acciones .icono{width:38px;height:38px}
+.evo-item .x{font-size:14px;margin-top:3px}
+.evo-item .codes{font-size:12px;color:var(--ink-2);margin-top:4px}
+
+.thumbs{display:flex;gap:10px;flex-wrap:wrap}
+.thumb{width:84px;height:70px;border-radius:8px;overflow:hidden;background:var(--paper);
+       border:1px solid var(--line);display:flex;align-items:center;justify-content:center}
+.thumb img{width:100%;height:100%;object-fit:cover}
+
+/* ---------- modal ---------- */
+.overlay{position:fixed;inset:0;background:rgba(11,15,20,.5);backdrop-filter:blur(2px);
+         display:flex;align-items:center;justify-content:center;padding:20px;z-index:60;
+         animation:fadeIn .15s ease}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.modal{background:var(--surface);border-radius:16px;padding:0;
+       width:100%;max-width:660px;max-height:88vh;overflow-y:auto;
+       display:flex;flex-direction:column;
+       box-shadow:var(--shadow-md);animation:slideUp .2s cubic-bezier(.4,0,.2,1)}
+@keyframes slideUp{from{transform:translateY(16px);opacity:0}to{transform:translateY(0);opacity:1}}
+.modal-header{
+  padding:18px 22px 14px;border-bottom:1px solid var(--line);
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  position:sticky;top:0;background:var(--surface);z-index:1;flex-shrink:0;
+}
+.modal-title{font-weight:700;font-size:17px}
+.modal-body{padding:20px 22px;display:flex;flex-direction:column;gap:0;flex:1}
+.modal-foot{
+  display:flex;gap:9px;justify-content:flex-end;padding:14px 22px;
+  border-top:1px solid var(--line);position:sticky;bottom:0;background:var(--surface);flex-shrink:0;
+}
+.girando{animation:girar .8s linear infinite}
+@keyframes girar{to{transform:rotate(360deg)}}
+
+/* ---------- aviso flotante ---------- */
+.toast{
+  position:fixed;bottom:24px;left:50%;transform:translate(-50%,80px);
+  background:var(--pine);color:#fff;padding:12px 22px;border-radius:99px;font-size:13.5px;
+  opacity:0;transition:.28s var(--ease-bounce);pointer-events:none;z-index:80;
+  box-shadow:var(--shadow-md);
+}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+
+/* ---------- login ---------- */
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;
+            background:linear-gradient(160deg,var(--pine) 0%,#16202B 100%)}
+.login-card{
+  background:var(--surface);border:1px solid var(--line);border-radius:16px;
+  padding:32px 28px;width:100%;max-width:380px;box-shadow:var(--shadow-md);
+}
+.login-card .mark{
+  font-size:24px;font-weight:700;text-align:center;color:var(--ink);letter-spacing:-.5px;
+}
+.login-card .mark span{color:var(--pine-soft)}
+.login-card .sub{
+  font-size:12.5px;text-align:center;color:var(--ink-2);margin-top:6px;margin-bottom:24px;
+}
+.err{background:var(--clay-wash);color:var(--clay);font-size:12.5px;
+     padding:10px 13px;border-radius:var(--r);margin-bottom:14px}
+
+/* ---------- responsive ---------- */
+@media(max-width:880px){
+  .fab-nueva{display:flex}
+  .btn-nueva-cita{display:none}
+  .topbar{padding:0 12px;gap:8px}
+  .buscador-overlay{padding-top:6vh}
+  .patient-head .nm{font-size:20px}
+  .patient-head > .act{flex:1;justify-content:center}
+  .overlay:not(.buscador-overlay){align-items:flex-end;padding:0}
+  .overlay:not(.buscador-overlay) .modal{
+    border-radius:16px 16px 0 0;max-width:100%;max-height:92vh;
+  }
+  .modal-foot{padding-bottom:calc(env(safe-area-inset-bottom, 0px))}
+  .modal-foot button{flex:1;justify-content:center;min-height:46px}
+  .cita{padding:9px 10px;gap:9px}
+  .cita-hora{width:40px}
+  .cita-av{width:28px;height:28px;font-size:10px}
+  .cita-estado{font-size:0;width:22px;height:22px;padding:0;border-radius:50%}
+  .cita-estado option{font-size:12px}
+
+  /* en celular: tratamiento arriba, pieza y valor abajo */
+  .fila-plan{grid-template-columns:1fr 1fr 38px;gap:7px;
+             padding-bottom:9px;border-bottom:1px solid var(--line)}
+  .fila-plan input:first-child{grid-column:1 / -1}
+
+  /* ---------- tablas -> tarjetas apiladas en celular ----------
+     Cada fila se convierte en una tarjeta con etiqueta + valor,
+     así se ve toda la información sin tener que deslizar de lado. */
+  .tabla-scroll{overflow-x:visible}
+  table.card-tabla{display:block;width:100%}
+  table.card-tabla thead{display:none}
+  table.card-tabla tbody{display:block}
+  table.card-tabla tr{
+    display:grid;grid-template-columns:1fr 1fr;column-gap:10px;row-gap:2px;
+    background:var(--surface);border:1px solid var(--line);
+    border-radius:10px;padding:9px 11px;margin-bottom:6px;min-width:0;
+  }
+  table.card-tabla tr:last-child{margin-bottom:0}
+  table.card-tabla td{
+    display:flex;flex-direction:column;align-items:flex-start;gap:0;
+    padding:3px 0;border:0;text-align:left;font-size:12.5px;min-width:0;
+  }
+  .icono{width:34px;height:34px}
+  .evo-acciones .icono{width:34px;height:34px}
+  table.card-tabla td::before{
+    content:attr(data-label);font-size:9px;font-weight:600;letter-spacing:.02em;
+    color:var(--ink-3);text-align:left;
+  }
+  table.card-tabla td.td-titulo{
+    grid-column:1 / -1;
+    display:block;text-align:left;font-size:13.5px;font-weight:600;color:var(--ink);
+    padding:0 0 5px;margin-bottom:4px;border-bottom:1px solid var(--line);
+  }
+  table.card-tabla td.td-titulo::before{content:none}
+  table.card-tabla td.td-titulo .sub{font-size:11px;font-weight:400;margin-top:1px}
+  table.card-tabla td.acciones{
+    grid-column:1 / -1;
+    position:static;background:none;box-shadow:none;
+    flex-direction:row;justify-content:flex-end;flex-wrap:wrap;gap:6px;white-space:normal;
+    border-top:1px solid var(--line);margin-top:4px;padding-top:6px;
+  }
+  table.card-tabla td.acciones::before{content:none}
+  table.card-tabla td.acciones:empty{display:none;border-top:0;margin-top:0;padding-top:0}
+
+
+  .main{padding:72px 9px 48px}
+  .g2,.split{grid-template-columns:1fr}
+  .g3{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+  .g3:has(.kv){grid-template-columns:1fr}
+  .kv{flex-direction:column;align-items:flex-start;gap:2px}
+  .kv .v{text-align:left}
+  .g4{grid-template-columns:1fr 1fr;gap:8px}
+  h1{font-size:23px}
+  .stat{padding:11px 12px;border-radius:11px}
+  .stat .k{font-size:9px;letter-spacing:.04em}
+  .stat .v{font-size:21px;margin-top:3px}
+  .stat .n{font-size:10.5px;margin-top:1px;line-height:1.3}
+  .card{padding:14px}
+  .mb{margin-bottom:10px}
+  .head{margin-bottom:14px}
+  .eyebrow{margin-bottom:3px}
+  .lede{margin-top:4px;font-size:13px}
+  .arcadas{overflow-x:auto;align-items:flex-start;padding-bottom:6px}
+  .arch{min-width:max-content}
+  .quad{gap:14px}
+  .teeth{gap:4px}
+  .odo-menu{max-width:calc(100vw - 24px)}
+  table{font-size:12.5px}
+  td,th{padding-left:5px;padding-right:5px}
+  .semana{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .barra-valor{display:none}
+  .metodos{grid-template-columns:1fr}
+  .barra-filtros>*{flex:1;min-width:120px}
+}
+
+@media(max-width:460px){
+  .btn-buscar span{display:none}
+  .btn-buscar{padding:8px;width:36px;justify-content:center}
+}
+
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+
+/* ---------- campos numéricos sin flechitas ---------- */
+input[type=number]{-moz-appearance:textfield;appearance:textfield}
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
