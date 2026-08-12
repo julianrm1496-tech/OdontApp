@@ -91,6 +91,7 @@ create table if not exists atenciones (
   piezas         text,
   valor          numeric(12,2) default 0,
   abono          numeric(12,2) default 0,
+  plan_tratamiento_id uuid references plan_tratamiento(id) on delete set null,  -- si esta atención viene de un plan pendiente
   creado_en      timestamptz not null default now()
 );
 

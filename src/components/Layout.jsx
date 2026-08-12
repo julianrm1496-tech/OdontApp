@@ -37,6 +37,7 @@ export default function Layout() {
   // no robar espacio. Se detecta una sola vez al montar.
   const [abierto, setAbierto] = useState(() => typeof window !== 'undefined' && window.innerWidth >= ANCHO_ESCRITORIO)
   const [tema, setTema] = useState(() => localStorage.getItem('tema') || 'claro')
+  const [email, setEmail] = useState('')
   const location = useLocation()
   const seccion = seccionActual(location.pathname)
 
@@ -44,6 +45,10 @@ export default function Layout() {
     document.documentElement.setAttribute('data-tema', tema)
     localStorage.setItem('tema', tema)
   }, [tema])
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setEmail(data.session?.user?.email || ''))
+  }, [])
 
   // En celular, elegir una sección cierra el cajón (es un overlay).
   // En PC el panel es fijo y se queda abierto al navegar.
@@ -89,11 +94,20 @@ export default function Layout() {
           </NavLink>
         ))}
         <div className="nav-foot">
+          <div className="nav-perfil">
+            <div className="nav-avatar">{(email[0] || '?').toUpperCase()}</div>
+            <div className="nav-perfil-info">
+              <div className="nav-perfil-email" title={email}>{email || 'Sesión activa'}</div>
+              <div className="nav-perfil-rol">Administrador</div>
+            </div>
+            <button className="nav-salir" onClick={salir} title="Cerrar sesión">
+              <LogOut size={15} strokeWidth={2} />
+            </button>
+          </div>
           <button className="nav-tema" onClick={() => setTema(t => t === 'oscuro' ? 'claro' : 'oscuro')}>
             {tema === 'oscuro' ? <Sun size={15} strokeWidth={2} /> : <Moon size={15} strokeWidth={2} />}
             {tema === 'oscuro' ? 'Modo claro' : 'Modo oscuro'}
           </button>
-          <button onClick={salir}><LogOut size={15} strokeWidth={2} />Cerrar sesión</button>
           <div className="nav-version">OdontApp</div>
         </div>
       </aside>

@@ -28,8 +28,20 @@ export function fechaCorta(iso) {
   return `${Number(d)} ${MESES[Number(m) - 1]}`
 }
 
+// Arma la fecha local (año-mes-día) sin pasar por UTC. NUNCA usar
+// `.toISOString().slice(0,10)` sobre un Date que tenga la hora actual
+// (new Date() sin argumentos) — toISOString() convierte a UTC, y en
+// Colombia (UTC-5) eso adelanta la fecha un día completo desde las
+// 7pm en adelante. Esta función siempre da la fecha correcta en la
+// zona horaria del navegador.
+export function fechaLocal(d = new Date()) {
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const dia = String(d.getDate()).padStart(2, '0')
+  return `${d.getFullYear()}-${m}-${dia}`
+}
+
 export function hoy() {
-  return new Date().toISOString().slice(0, 10)
+  return fechaLocal()
 }
 
 export function pesos(v) {

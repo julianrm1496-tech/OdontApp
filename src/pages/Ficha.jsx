@@ -13,9 +13,10 @@ import { Plus } from 'lucide-react'
 const ATENCION_VACIA = {
   fecha: hoy(), hora_inicio: '', hora_fin: '', grupo_servicio: 'Consulta',
   motivo: '', evolucion: '', cie10: '', cie10_1: '', tipo_dx: '1', finalidad: '16',
-  cups: '', procedimiento: '', piezas: '', valor: '', abono: '',
+  cups: '', procedimiento: '', piezas: '', valor: '', abono: '', metodo: 'efectivo', plan_vinculado_id: '',
 }
 const PLAN_VACIO = { descripcion: '', pieza: '', valor: '', fecha_realizado: '' }
+const METODOS_PAGO = { efectivo: 'Efectivo', transferencia: 'Transferencia', tarjeta: 'Tarjeta' }
 
 const FILA_PLAN_VACIA = { descripcion: '', pieza: '', valor: '' }
 
@@ -45,6 +46,9 @@ export default function Ficha() {
   const [graduar, setGraduar] = useState(null)       // ítem del plan que se está marcando hecho
   const [fechaGraduar, setFechaGraduar] = useState(hoy())
   const [graduando, setGraduando] = useState(false)
+  const [abonoGraduar, setAbonoGraduar] = useState('')
+  const [metodoGraduar, setMetodoGraduar] = useState('efectivo')
+  const [sugerirSiguiente, setSugerirSiguiente] = useState(null)   // { fecha, planes: [...] } tras guardar
 
   useEffect(() => { cargar() }, [id])
 
@@ -120,6 +124,7 @@ export default function Ficha() {
     setForm({
       fecha: a.fecha, concepto: a.procedimiento || a.motivo || '', pieza: a.piezas || '',
       valor: a.valor ?? '', abono: abonoVinculado ? abonoVinculado.valor : '',
+      metodo: abonoVinculado?.metodo || 'efectivo',
     })
     setModal('movimiento')
   }
@@ -132,7 +137,7 @@ export default function Ficha() {
       grupo_servicio: a.grupo_servicio || 'Consulta', motivo: a.motivo || '', evolucion: a.evolucion || '',
       cie10: a.cie10 || '', cie10_1: a.cie10_1 || '', tipo_dx: a.tipo_dx || '1', finalidad: a.finalidad || '16',
       cups: a.cups || '', piezas: a.piezas || '', valor: a.valor ?? '',
-      abono: abonoVinculado ? abonoVinculado.valor : '',
+      abono: abonoVinculado ? abonoVinculado.valor : '', metodo: abonoVinculado?.metodo || 'efectivo',
     })
     setModal('atencion')
   }
@@ -180,7 +185,7 @@ export default function Ficha() {
           const nuevoAbono = Number(form.abono) || 0
           if (editandoAbonoVinculado) {
             if (nuevoAbono > 0) {
-              await supabase.from('pagos').update({ valor: nuevoAbono, fecha: form.fecha })
+              await supabase.from('pagos').update({ valor: nuevoAbono, fecha: form.fecha, metodo: form.metodo })
                 .eq('id', editandoAbonoVinculado.id)
             } else {
               await supabase.from('pagos').delete().eq('id', editandoAbonoVinculado.id)
@@ -188,22 +193,44 @@ export default function Ficha() {
           } else if (nuevoAbono > 0) {
             await supabase.from('pagos').insert({
               paciente_id: id, atencion_id: editandoAtencionId, fecha: form.fecha,
-              valor: nuevoAbono, concepto: proc?.nombre || 'Atención', metodo: 'efectivo',
+              valor: nuevoAbono, concepto: proc?.nombre || 'Atención', metodo: form.metodo,
             })
           }
         }
-      } else {
-        const r = await supabase.from('atenciones')
-          .insert({ ...payload, paciente_id: id, abono: Number(form.abono) || 0 })
-          .select('id').single()
-        error = r.error
-        if (!error && Number(form.abono) > 0) {
-          await supabase.from('pagos').insert({
-            paciente_id: id, atencion_id: r.data.id, fecha: form.fecha, valor: Number(form.abono),
-            concepto: proc?.nombre || 'Atención', metodo: 'efectivo',
-          })
-        }
+        setGuardando(false)
+        if (error) { toast('No se pudo guardar el cambio'); return }
+        setModal(null); toast('Guardado'); cargar()
+        return
       }
+
+      // Atención nueva — si viene de un plan pendiente, queda vinculada
+      const planElegido = form.plan_vinculado_id ? planPendiente.find(p => p.id === form.plan_vinculado_id) : null
+      const r = await supabase.from('atenciones')
+        .insert({ ...payload, paciente_id: id, abono: Number(form.abono) || 0,
+                   plan_tratamiento_id: planElegido?.id || null })
+        .select('id').single()
+      error = r.error
+      if (!error && Number(form.abono) > 0) {
+        await supabase.from('pagos').insert({
+          paciente_id: id, atencion_id: r.data.id, fecha: form.fecha, valor: Number(form.abono),
+          concepto: proc?.nombre || 'Atención', metodo: form.metodo,
+        })
+      }
+      if (!error && planElegido) {
+        await supabase.from('plan_tratamiento')
+          .update({ estado: 'hecho', fecha_realizado: form.fecha }).eq('id', planElegido.id)
+      }
+      setGuardando(false)
+      if (error) { toast('No se pudo guardar la atención'); return }
+
+      // ¿Quedan otros planes pendientes? Se lo preguntamos antes de cerrar,
+      // para encadenar varios tratamientos hechos en la misma cita.
+      const otrosPendientes = planPendiente.filter(p => p.id !== planElegido?.id)
+      setModal(null)
+      toast(planElegido ? `"${planElegido.descripcion}" registrado y marcado como hecho` : 'Atención registrada')
+      if (otrosPendientes.length > 0) setSugerirSiguiente({ fecha: form.fecha, planes: otrosPendientes })
+      cargar()
+      return
     }
 
     if (modal === 'movimiento') {
@@ -217,7 +244,7 @@ export default function Ficha() {
         const nuevoAbono = Number(form.abono) || 0
         if (editandoAbonoVinculado) {
           if (nuevoAbono > 0) {
-            await supabase.from('pagos').update({ valor: nuevoAbono, fecha: form.fecha })
+            await supabase.from('pagos').update({ valor: nuevoAbono, fecha: form.fecha, metodo: form.metodo })
               .eq('id', editandoAbonoVinculado.id)
           } else {
             await supabase.from('pagos').delete().eq('id', editandoAbonoVinculado.id)
@@ -225,7 +252,7 @@ export default function Ficha() {
         } else if (nuevoAbono > 0) {
           await supabase.from('pagos').insert({
             paciente_id: id, atencion_id: editandoMovimientoId, fecha: form.fecha,
-            valor: nuevoAbono, concepto: form.concepto, metodo: 'efectivo',
+            valor: nuevoAbono, concepto: form.concepto, metodo: form.metodo,
           })
         }
       }
@@ -285,9 +312,15 @@ export default function Ficha() {
     const { error } = await supabase.from('plan_tratamiento')
       .update({ estado: 'hecho', fecha_realizado: fechaGraduar })
       .eq('id', graduar.id)
+    if (!error && Number(abonoGraduar) > 0) {
+      await supabase.from('pagos').insert({
+        paciente_id: id, fecha: fechaGraduar, valor: Number(abonoGraduar),
+        concepto: graduar.descripcion, metodo: metodoGraduar,
+      })
+    }
     setGraduando(false)
     if (error) { toast('No se pudo registrar'); return }
-    setGraduar(null)
+    setGraduar(null); setAbonoGraduar(''); setMetodoGraduar('efectivo')
     toast('Se agregó al estado de cuenta')
     cargar()
   }
@@ -322,14 +355,20 @@ export default function Ficha() {
   const eliminarAtencion = (a, abonoVinculado = null) => confirmar({
     titulo: 'Eliminar atención',
     mensaje: `¿Eliminar la atención del ${fecha(a.fecha)}?`,
-    detalle: abonoVinculado
-      ? `Se borra también su nota en la evolución y el abono de ${pesos(abonoVinculado.valor)} que tenía vinculado. No se puede deshacer.`
-      : 'Se borra también su nota en la evolución y del estado de cuenta. No se puede deshacer.',
+    detalle: (abonoVinculado
+      ? `Se borra también su nota en la evolución y el abono de ${pesos(abonoVinculado.valor)} que tenía vinculado. `
+      : 'Se borra también su nota en la evolución y del estado de cuenta. ') +
+      (a.plan_tratamiento_id ? 'El plan de tratamiento que le dio origen vuelve a quedar pendiente. ' : '') +
+      'No se puede deshacer.',
     textoBoton: 'Sí, eliminar',
     onConfirmar: async () => {
       const { error } = await supabase.from('atenciones').delete().eq('id', a.id)
       if (error) { toast('No se pudo eliminar'); return }
       if (abonoVinculado) await supabase.from('pagos').delete().eq('id', abonoVinculado.id)
+      if (a.plan_tratamiento_id) {
+        await supabase.from('plan_tratamiento')
+          .update({ estado: 'pendiente', fecha_realizado: null }).eq('id', a.plan_tratamiento_id)
+      }
       toast('Atención eliminada')
       cargar()
     },
@@ -540,9 +579,9 @@ export default function Ficha() {
                 <p className="grupo">Plan pendiente</p>
                 {planPendiente.map(x => (
                   <div className="row" key={x.id}>
-                    <input type="checkbox" checked={false}
-                      onChange={() => { setGraduar(x); setFechaGraduar(hoy()) }}
-                      style={{ width: 16, flex: 'none' }} title="Marcar hecho" />
+                    <input type="checkbox" checked={false} className="check-hecho"
+                      onChange={() => { setGraduar(x); setFechaGraduar(hoy()); setAbonoGraduar(''); setMetodoGraduar('efectivo') }}
+                      title="Marcar hecho y pasar al estado de cuenta" />
                     <span className="n">{x.descripcion}{x.pieza && ` · pieza ${x.pieza}`}</span>
                     <span className="num" style={{ fontSize: 12.5 }}>{pesos(x.valor)}</span>
                     <button className="icono" title="Editar" onClick={() => abrirEditarPlan(x)}><IconoEditar /></button>
@@ -716,9 +755,14 @@ export default function Ficha() {
           <Campo label="Tratamiento">
             <input value={form.concepto} onChange={set('concepto')} placeholder="Obturación en resina" autoFocus />
           </Campo>
-          <div className="grid g2" style={{ marginTop: 14 }}>
+          <div className="grid g3" style={{ marginTop: 14 }}>
             <Campo label="Valor"><input type="number" inputMode="numeric" value={form.valor} onChange={set('valor')} placeholder="180000" min="0" /></Campo>
             <Campo label="Abono"><input type="number" inputMode="numeric" value={form.abono} onChange={set('abono')} placeholder="0" min="0" /></Campo>
+            <Campo label="Método">
+              <select value={form.metodo} onChange={set('metodo')}>
+                {Object.entries(METODOS_PAGO).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              </select>
+            </Campo>
           </div>
         </Modal>
       )}
@@ -727,6 +771,31 @@ export default function Ficha() {
         <Modal titulo={editandoAtencionId ? 'Editar atención' : 'Registrar atención'} onCerrar={() => setModal(null)}
           onGuardar={guardar} guardando={guardando} textoGuardar={editandoAtencionId ? 'Guardar cambios' : 'Guardar atención'}>
           <p className="nota-rips"><span className="rips-badge">RIPS</span> Estos campos van en el reporte al Ministerio</p>
+
+          {!editandoAtencionId && planPendiente.length > 0 && (
+            <div style={{ marginBottom: 16 }}>
+              <Campo label="¿Es un tratamiento del plan pendiente?">
+                <select value={form.plan_vinculado_id} onChange={e => {
+                  const p = planPendiente.find(x => x.id === e.target.value)
+                  setForm(f => ({
+                    ...f, plan_vinculado_id: e.target.value,
+                    ...(p ? { evolucion: f.evolucion || p.descripcion, piezas: f.piezas || p.pieza || '', valor: p.valor } : {}),
+                  }))
+                }}>
+                  <option value="">— Tratamiento nuevo —</option>
+                  {planPendiente.map(p => (
+                    <option key={p.id} value={p.id}>{p.descripcion}{p.pieza && ` · pieza ${p.pieza}`} · {pesos(p.valor)}</option>
+                  ))}
+                </select>
+              </Campo>
+              {form.plan_vinculado_id && (
+                <p className="sub" style={{ marginTop: 6, color: 'var(--green-dark)' }}>
+                  ✓ Este plan se marcará como hecho al guardar.
+                </p>
+              )}
+            </div>
+          )}
+
           <div className="grid g2 mb">
             <Campo label="Fecha" rips><input type="date" value={form.fecha} onChange={set('fecha')} max={hoy()} /></Campo>
             <Campo label="Grupo de servicio">
@@ -790,6 +859,15 @@ export default function Ficha() {
               <input type="number" inputMode="numeric" value={form.abono} onChange={set('abono')} placeholder="0" min="0" />
             </Campo>
           </div>
+          {Number(form.abono) > 0 && (
+            <div style={{ marginTop: 14 }}>
+              <Campo label="Método del abono">
+                <select value={form.metodo} onChange={set('metodo')}>
+                  {Object.entries(METODOS_PAGO).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                </select>
+              </Campo>
+            </div>
+          )}
           {editandoAtencionId && editandoAbonoVinculado && (
             <p className="sub" style={{ marginTop: 8 }}>
               El abono se muestra aquí porque quedó vinculado a esta atención. Cambiarlo actualiza el
@@ -883,13 +961,58 @@ export default function Ficha() {
           <p style={{ fontSize: 14, marginBottom: 16 }}>
             <strong>{graduar.descripcion}</strong>{graduar.pieza && ` · pieza ${graduar.pieza}`} · {pesos(graduar.valor)}
           </p>
-          <Campo label="¿Qué día se hizo?">
-            <input type="date" value={fechaGraduar} onChange={e => setFechaGraduar(e.target.value)} max={hoy()} autoFocus />
-          </Campo>
-          <p className="sub" style={{ marginTop: 10 }}>
+          <div className="grid g2">
+            <Campo label="¿Qué día se hizo?">
+              <input type="date" value={fechaGraduar} onChange={e => setFechaGraduar(e.target.value)} max={hoy()} autoFocus />
+            </Campo>
+            <Campo label="¿Pagó algo? (opcional)">
+              <input type="number" inputMode="numeric" value={abonoGraduar}
+                onChange={e => setAbonoGraduar(e.target.value)} placeholder="0" min="0" />
+            </Campo>
+          </div>
+          {Number(abonoGraduar) > 0 && (
+            <div style={{ marginTop: 14 }}>
+              <Campo label="Método">
+                <select value={metodoGraduar} onChange={e => setMetodoGraduar(e.target.value)}>
+                  {Object.entries(METODOS_PAGO).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                </select>
+              </Campo>
+            </div>
+          )}
+          <p className="sub" style={{ marginTop: 12 }}>
             Se agrega al estado de cuenta con esa fecha. No se toca la evolución — eso solo se
             modifica al registrar una atención.
           </p>
+          <p className="sub" style={{ marginTop: 6, color: 'var(--amber)', fontWeight: 600 }}>
+            ⚠ Esto NO queda registrado para RIPS. Si el tratamiento necesita CUPS/CIE10 para el
+            reporte al Ministerio, use "Registrar atención" en su lugar.
+          </p>
+        </Modal>
+      )}
+
+      {sugerirSiguiente && (
+        <Modal titulo="¿Registró algo más?" onCerrar={() => setSugerirSiguiente(null)}>
+          <p style={{ fontSize: 14, marginBottom: 14 }}>
+            El paciente también tenía pendiente:
+          </p>
+          <div className="lista-vert">
+            {sugerirSiguiente.planes.map(p => (
+              <div className="row" key={p.id}>
+                <span className="n">{p.descripcion}{p.pieza && ` · pieza ${p.pieza}`}</span>
+                <span className="num" style={{ fontSize: 12.5 }}>{pesos(p.valor)}</span>
+                <button className="act sm"
+                  onClick={() => {
+                    setSugerirSiguiente(null)
+                    setEditandoAtencionId(null); setEditandoMovimientoId(null); setEditandoAbonoVinculado(null)
+                    setForm({ ...ATENCION_VACIA, fecha: sugerirSiguiente.fecha, plan_vinculado_id: p.id,
+                              evolucion: p.descripcion, piezas: p.pieza || '', valor: p.valor })
+                    setModal('atencion')
+                  }}>
+                  Registrar
+                </button>
+              </div>
+            ))}
+          </div>
         </Modal>
       )}
     </>

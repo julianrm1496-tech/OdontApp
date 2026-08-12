@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { fecha, hoy, pesos, semaforo, nombreCompleto } from '../lib/format'
 import { Cargando } from '../components/ui'
 import { Barras } from '../components/Grafico'
+import { CalendarDays, Wallet, Clock, ShieldCheck } from 'lucide-react'
 
 const MESES_CORTO = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
 
@@ -90,13 +91,13 @@ export default function Inicio() {
   return (
     <>
       <div className="grid g4 mb">
-        <div className="stat">
-          <div className="k">Citas hoy</div>
+        <div className="stat azul">
+          <div className="k"><span className="ico"><CalendarDays size={13} strokeWidth={2.3} /></span>Citas hoy</div>
           <div className="v">{datos.citasHoy.length}</div>
           <div className="n">{proxima ? `Próxima ${proxima.hora}` : 'Sin citas pendientes'}</div>
         </div>
-        <div className="stat">
-          <div className="k">Cobrado este mes</div>
+        <div className="stat verde">
+          <div className="k"><span className="ico"><Wallet size={13} strokeWidth={2.3} /></span>Cobrado este mes</div>
           <div className="v">{pesos(datos.cobradoMes)}</div>
           <div className="n">
             {datos.variacion === null ? 'Primer mes con registros' : (
@@ -106,13 +107,13 @@ export default function Inicio() {
             )}
           </div>
         </div>
-        <div className={'stat' + (datos.porCobrar > 0 ? ' warn' : '')}>
-          <div className="k">Por cobrar</div>
+        <div className={'stat' + (datos.porCobrar > 0 ? ' warn' : ' azul')}>
+          <div className="k"><span className="ico"><Clock size={13} strokeWidth={2.3} /></span>Por cobrar</div>
           <div className="v">{pesos(datos.porCobrar)}</div>
           <div className="n">{datos.conDeuda ? `${datos.conDeuda} pacientes con saldo` : 'Todo al día'}</div>
         </div>
-        <div className={'stat' + (datos.faltan ? ' warn' : '')}>
-          <div className="k">Bioseguridad</div>
+        <div className={'stat' + (datos.faltan ? ' rojo' : ' verde')}>
+          <div className="k"><span className="ico"><ShieldCheck size={13} strokeWidth={2.3} /></span>Bioseguridad</div>
           <div className="v">{3 - datos.faltan}<span style={{ fontSize: 18, color: 'var(--ink-3)' }}> / 3</span></div>
           <div className="n">{datos.faltan ? `Faltan ${datos.faltan} registros` : 'Todo al día'}</div>
         </div>

@@ -1,6 +1,6 @@
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
-import { fecha, pesos, edad, nombreCompleto } from './format'
+import { fecha, hoy, pesos, edad, nombreCompleto } from './format'
 
 const NOMBRE_CARA = { v: 'Vestibular', d: 'Distal', l: 'Lingual', m: 'Mesial', o: 'Oclusal' }
 const NOMBRE_ESTADO_CARA = { caries: 'Caries', obturacion: 'Obturación', sellante: 'Sellante' }
@@ -47,7 +47,7 @@ export function generarPdfHistoria({ paciente, atenciones, plan, pagos, dientes 
   doc.setFont('helvetica', 'bold'); doc.setFontSize(15)
   doc.text('HISTORIA CLÍNICA ODONTOLÓGICA', margen, y); y += 18
   doc.setFont('helvetica', 'normal'); doc.setFontSize(10)
-  doc.text(`Generado el ${fecha(new Date().toISOString())}`, margen, y); y += 20
+  doc.text(`Generado el ${fecha(hoy())}`, margen, y); y += 20
 
   // ---------- datos personales ----------
   titulo('DATOS PERSONALES')

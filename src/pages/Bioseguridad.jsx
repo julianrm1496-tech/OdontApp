@@ -1,7 +1,7 @@
 import { useEffect, useState, Fragment } from 'react'
 import { supabase } from '../lib/supabase'
-import { fecha, hoy, agruparPorMes } from '../lib/format'
-import { Modal, Campo, Vacio, Cargando, useToast } from '../components/ui'
+import { fecha, hoy, fechaLocal, agruparPorMes } from '../lib/format'
+import { Modal, Campo, Vacio, Cargando, useToast, useConfirmar, IconoEditar, IconoEliminar } from '../components/ui'
 import FiltroFechas from '../components/FiltroFechas'
 import { Plus } from 'lucide-react'
 
@@ -72,11 +72,13 @@ function SelectorFecha({ form, set, setForm, permiteVarios = true }) {
 export default function Bioseguridad() {
   const [registros, setRegistros] = useState(null)
   const [tipo, setTipo] = useState(null)
+  const [editando, setEditando] = useState(null)
   const [form, setForm] = useState({})
   const [guardando, setGuardando] = useState(false)
-  const [desde, setDesde] = useState(() => { const d = new Date(); d.setMonth(d.getMonth() - 2, 1); return d.toISOString().slice(0, 10) })
+  const [desde, setDesde] = useState(() => { const d = new Date(); d.setMonth(d.getMonth() - 2, 1); return fechaLocal(d) })
   const [hasta, setHasta] = useState(hoy())
   const toast = useToast()
+  const confirmar = useConfirmar()
 
   const cargar = async () => {
     let q = supabase.from('bioseguridad')
@@ -90,9 +92,30 @@ export default function Bioseguridad() {
 
   useEffect(() => { cargar() }, [desde, hasta])
 
-  const abrir = (t) => {
+  const abrir = (t, registro = null) => {
     setTipo(t)
-    setForm({ ...VACIOS[t], fecha: hoy(), fecha_hasta: hoy(), varios: false })
+    setEditando(registro?.id || null)
+    if (registro) {
+      const d = registro.datos || {}
+      let campos = {}
+      if (t === 'esterilizacion') {
+        campos = {
+          lote: d.lote || '', hora: d.hora || '', descripcion: d.descripcion || '',
+          paquetes: d.paquetes ?? '', tiempo: d.tiempo ?? '45', temperatura: d.temperatura ?? '134',
+          cinta: d.cinta || 'conforme', indicador: d.indicador || 'conforme', trazabilidad: d.trazabilidad || 'conforme',
+        }
+      } else if (t === 'residuos') {
+        campos = Object.fromEntries(RESIDUOS.map(r => [r.id, d[r.id] ?? '']))
+      } else if (t === 'ambiente') {
+        campos = {
+          m_temperatura: d.manana?.temperatura ?? '', m_humedad: d.manana?.humedad ?? '', m_hora: d.manana?.hora || '',
+          t_temperatura: d.tarde?.temperatura ?? '', t_humedad: d.tarde?.humedad ?? '', t_hora: d.tarde?.hora || '',
+        }
+      }
+      setForm({ ...campos, fecha: registro.fecha, fecha_hasta: registro.fecha, varios: false })
+    } else {
+      setForm({ ...VACIOS[t], fecha: hoy(), fecha_hasta: hoy(), varios: false })
+    }
   }
 
   const guardar = async () => {
@@ -119,6 +142,16 @@ export default function Bioseguridad() {
       }
     }
 
+    if (editando) {
+      const { error } = await supabase.from('bioseguridad').update({ fecha: form.fecha, datos }).eq('id', editando)
+      setGuardando(false)
+      if (error) { toast('No se pudo guardar'); return }
+      setTipo(null); setEditando(null)
+      toast('Registro actualizado')
+      cargar()
+      return
+    }
+
     const fechas = form.varios && form.fecha_hasta >= form.fecha
       ? rangoFechas(form.fecha, form.fecha_hasta)
       : [form.fecha]
@@ -131,6 +164,18 @@ export default function Bioseguridad() {
     toast(fechas.length > 1 ? `${fechas.length} registros guardados` : 'Registro guardado')
     cargar()
   }
+
+  const eliminar = (registro) => confirmar({
+    titulo: 'Eliminar registro',
+    mensaje: `¿Eliminar el registro de ${TIPOS[registro.tipo].titulo.toLowerCase()} del ${fecha(registro.fecha)}?`,
+    textoBoton: 'Sí, eliminar',
+    onConfirmar: async () => {
+      const { error } = await supabase.from('bioseguridad').delete().eq('id', registro.id)
+      if (error) { toast('No se pudo eliminar'); return }
+      toast('Registro eliminado')
+      cargar()
+    },
+  })
 
   const set = (campo) => (e) => setForm(f => ({ ...f, [campo]: e.target.value }))
 
@@ -195,12 +240,12 @@ export default function Bioseguridad() {
                   <table className="card-tabla">
                     <thead>
                       <tr><th>Fecha</th><th>Lote</th><th>Paquete</th><th className="num">Cant.</th>
-                          <th>Temp. / Tiempo</th><th>Control</th></tr>
+                          <th>Temp. / Tiempo</th><th>Control</th><th className="acciones" /></tr>
                     </thead>
                     <tbody>
                       {agruparPorMes(de('esterilizacion'), r => r.fecha).map(grupo => (
                         <Fragment key={grupo.clave}>
-                          <tr className="fila-grupo-mes"><td colSpan={6}>{grupo.etiqueta}</td></tr>
+                          <tr className="fila-grupo-mes"><td colSpan={7}>{grupo.etiqueta}</td></tr>
                           {grupo.items.map(r => {
                             const d = r.datos || {}
                             const ok = conforme(d.cinta) && conforme(d.indicador) && conforme(d.trazabilidad)
@@ -212,6 +257,10 @@ export default function Bioseguridad() {
                                 <td className="num" data-label="Cantidad">{d.paquetes}</td>
                                 <td className="sub" data-label="Temp. / Tiempo">{d.temperatura}°C · {d.tiempo} min</td>
                                 <td data-label="Control"><span className={'tag ' + (ok ? 'ok' : 'warn')}>{ok ? 'Conforme' : 'Revisar'}</span></td>
+                                <td className="acciones">
+                                  <button className="icono" title="Editar" onClick={() => abrir('esterilizacion', r)}><IconoEditar /></button>
+                                  <button className="icono danger" title="Eliminar" onClick={() => eliminar(r)}><IconoEliminar /></button>
+                                </td>
                               </tr>
                             )
                           })}
@@ -237,6 +286,10 @@ export default function Bioseguridad() {
                                   <div className="sub">{d.temperatura}°C · {d.tiempo} min</div>
                                 </div>
                                 <span className={'tag ' + (ok ? 'ok' : 'warn')} style={{ flexShrink: 0 }}>{ok ? 'Conforme' : 'Revisar'}</span>
+                              </div>
+                              <div className="fcm-actions">
+                                <button className="icono" title="Editar" onClick={() => abrir('esterilizacion', r)}><IconoEditar /></button>
+                                <button className="icono danger" title="Eliminar" onClick={() => eliminar(r)}><IconoEliminar /></button>
                               </div>
                             </div>
                           )
@@ -267,12 +320,13 @@ export default function Bioseguridad() {
                         <th>Fecha</th>
                         {RESIDUOS.map(r => <th key={r.id} className="num">{r.nombre}</th>)}
                         <th className="num">Total</th>
+                        <th className="acciones" />
                       </tr>
                     </thead>
                     <tbody>
                       {agruparPorMes(de('residuos'), r => r.fecha).map(grupo => (
                         <Fragment key={grupo.clave}>
-                          <tr className="fila-grupo-mes"><td colSpan={RESIDUOS.length + 2}>{grupo.etiqueta}</td></tr>
+                          <tr className="fila-grupo-mes"><td colSpan={RESIDUOS.length + 3}>{grupo.etiqueta}</td></tr>
                           {grupo.items.map(r => {
                             const d = r.datos || {}
                             const total = RESIDUOS.reduce((s, x) => s + Number(d[x.id] || 0), 0)
@@ -283,6 +337,10 @@ export default function Bioseguridad() {
                                   <td key={x.id} className="num" data-label={x.nombre}>{Number(d[x.id] || 0) > 0 ? `${d[x.id]} kg` : '—'}</td>
                                 ))}
                                 <td className="num" data-label="Total"><strong>{total.toFixed(2)} kg</strong></td>
+                                <td className="acciones">
+                                  <button className="icono" title="Editar" onClick={() => abrir('residuos', r)}><IconoEditar /></button>
+                                  <button className="icono danger" title="Eliminar" onClick={() => eliminar(r)}><IconoEliminar /></button>
+                                </td>
                               </tr>
                             )
                           })}
@@ -310,6 +368,10 @@ export default function Bioseguridad() {
                                 </div>
                                 <div style={{ fontWeight: 700, fontSize: 13.5, flexShrink: 0 }}>{total.toFixed(2)} kg</div>
                               </div>
+                              <div className="fcm-actions">
+                                <button className="icono" title="Editar" onClick={() => abrir('residuos', r)}><IconoEditar /></button>
+                                <button className="icono danger" title="Eliminar" onClick={() => eliminar(r)}><IconoEliminar /></button>
+                              </div>
                             </div>
                           )
                         })}
@@ -334,11 +396,11 @@ export default function Bioseguridad() {
               <>
                 <div className="hide-mobile-block tabla-scroll">
                   <table className="card-tabla">
-                    <thead><tr><th>Fecha</th><th>Mañana</th><th>Tarde</th></tr></thead>
+                    <thead><tr><th>Fecha</th><th>Mañana</th><th>Tarde</th><th className="acciones" /></tr></thead>
                     <tbody>
                       {agruparPorMes(de('ambiente'), r => r.fecha).map(grupo => (
                         <Fragment key={grupo.clave}>
-                          <tr className="fila-grupo-mes"><td colSpan={3}>{grupo.etiqueta}</td></tr>
+                          <tr className="fila-grupo-mes"><td colSpan={4}>{grupo.etiqueta}</td></tr>
                           {grupo.items.map(r => {
                             const d = r.datos || {}
                             return (
@@ -346,6 +408,10 @@ export default function Bioseguridad() {
                                 <td className="td-titulo">{fecha(r.fecha)}</td>
                                 <td className="sub" data-label="Mañana">{d.manana?.temperatura ? `${d.manana.temperatura}°C · ${d.manana.humedad}%` : '—'}</td>
                                 <td className="sub" data-label="Tarde">{d.tarde?.temperatura ? `${d.tarde.temperatura}°C · ${d.tarde.humedad}%` : '—'}</td>
+                                <td className="acciones">
+                                  <button className="icono" title="Editar" onClick={() => abrir('ambiente', r)}><IconoEditar /></button>
+                                  <button className="icono danger" title="Eliminar" onClick={() => eliminar(r)}><IconoEliminar /></button>
+                                </td>
                               </tr>
                             )
                           })}
@@ -374,6 +440,10 @@ export default function Bioseguridad() {
                                   </div>
                                 </div>
                               </div>
+                              <div className="fcm-actions">
+                                <button className="icono" title="Editar" onClick={() => abrir('ambiente', r)}><IconoEditar /></button>
+                                <button className="icono danger" title="Eliminar" onClick={() => eliminar(r)}><IconoEliminar /></button>
+                              </div>
                             </div>
                           )
                         })}
@@ -388,9 +458,10 @@ export default function Bioseguridad() {
       )}
 
       {tipo === 'esterilizacion' && (
-        <Modal titulo="Registrar ciclo de esterilización" onCerrar={() => setTipo(null)}
-          onGuardar={guardar} guardando={guardando}>
-          <SelectorFecha form={form} set={set} setForm={setForm} />
+        <Modal titulo={editando ? 'Editar ciclo de esterilización' : 'Registrar ciclo de esterilización'}
+          onCerrar={() => { setTipo(null); setEditando(null) }}
+          onGuardar={guardar} guardando={guardando} textoGuardar={editando ? 'Guardar cambios' : 'Guardar'}>
+          <SelectorFecha form={form} set={set} setForm={setForm} permiteVarios={!editando} />
           <p className="grupo">Programación</p>
           <div className="grid g2 mb">
             <Campo label="Lote"><input value={form.lote} onChange={set('lote')} placeholder="1" autoFocus /></Campo>
@@ -424,8 +495,9 @@ export default function Bioseguridad() {
       )}
 
       {tipo === 'residuos' && (
-        <Modal titulo="Registrar pesaje de residuos" onCerrar={() => setTipo(null)}
-          onGuardar={guardar} guardando={guardando}>
+        <Modal titulo={editando ? 'Editar pesaje de residuos' : 'Registrar pesaje de residuos'}
+          onCerrar={() => { setTipo(null); setEditando(null) }}
+          onGuardar={guardar} guardando={guardando} textoGuardar={editando ? 'Guardar cambios' : 'Guardar'}>
           <SelectorFecha form={form} set={set} setForm={setForm} permiteVarios={false} />
           {['Riesgo biológico', 'No peligrosos', 'Químicos'].map(g => (
             <div key={g}>
@@ -443,8 +515,9 @@ export default function Bioseguridad() {
       )}
 
       {tipo === 'ambiente' && (
-        <Modal titulo="Registrar temperatura y humedad" onCerrar={() => setTipo(null)}
-          onGuardar={guardar} guardando={guardando}>
+        <Modal titulo={editando ? 'Editar temperatura y humedad' : 'Registrar temperatura y humedad'}
+          onCerrar={() => { setTipo(null); setEditando(null) }}
+          onGuardar={guardar} guardando={guardando} textoGuardar={editando ? 'Guardar cambios' : 'Guardar'}>
           <SelectorFecha form={form} set={set} setForm={setForm} permiteVarios={false} />
           <p className="grupo">Mañana</p>
           <div className="grid g3 mb">

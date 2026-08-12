@@ -1,8 +1,8 @@
 import { useEffect, useState, Fragment } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { fecha, hoy, pesos, nombreCompleto, agruparPorMes } from '../lib/format'
-import { Modal, Campo, Vacio, Cargando, useToast, IconoEliminar, useConfirmar } from '../components/ui'
+import { fecha, hoy, fechaLocal, pesos, nombreCompleto, agruparPorMes } from '../lib/format'
+import { Modal, Campo, Vacio, Cargando, useToast, IconoEliminar, IconoEditar, useConfirmar } from '../components/ui'
 import { Barras } from '../components/Grafico'
 import FiltroFechas from '../components/FiltroFechas'
 import { Plus } from 'lucide-react'
@@ -10,11 +10,17 @@ import { Plus } from 'lucide-react'
 const VACIO = { paciente_id: '', fecha: hoy(), concepto: '', valor: '', metodo: 'efectivo' }
 const MESES_CORTO = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
 const METODOS = { efectivo: 'Efectivo', transferencia: 'Transferencia', tarjeta: 'Tarjeta' }
+const COLORES_METODO = {
+  efectivo: 'var(--green)',
+  transferencia: 'var(--pine-soft)',
+  tarjeta: 'var(--amber)',
+  _otros: ['var(--clay)', 'var(--pine)', '#8B5CF6', '#EC4899'],
+}
 
 function inicioMes() {
   const d = new Date()
   d.setDate(1)
-  return d.toISOString().slice(0, 10)
+  return fechaLocal(d)
 }
 
 export default function Pagos() {
@@ -50,14 +56,26 @@ export default function Pagos() {
 
   useEffect(() => { cargar() }, [desde, hasta])
 
+  const [editando, setEditando] = useState(null)
+
+  const abrirEditar = (p) => {
+    setEditando(p.id)
+    setForm({ paciente_id: p.paciente_id, fecha: p.fecha, concepto: p.concepto || '', valor: p.valor, metodo: p.metodo || 'efectivo' })
+    setAbierto(true)
+  }
+
   const guardar = async () => {
     if (!form.paciente_id) { toast('Seleccione el paciente'); return }
     if (!Number(form.valor)) { toast('Ingrese el valor'); return }
     setGuardando(true)
-    const { error } = await supabase.from('pagos').insert({ ...form, valor: Number(form.valor) })
+    const { error } = editando
+      ? await supabase.from('pagos').update({ ...form, valor: Number(form.valor) }).eq('id', editando)
+      : await supabase.from('pagos').insert({ ...form, valor: Number(form.valor) })
     setGuardando(false)
     if (error) { toast('No se pudo guardar el pago'); return }
-    setAbierto(false); setForm(VACIO); toast('Pago registrado'); cargar()
+    setAbierto(false); setEditando(null); setForm(VACIO)
+    toast(editando ? 'Pago actualizado' : 'Pago registrado')
+    cargar()
   }
 
   const eliminar = (p) => confirmar({
@@ -104,7 +122,7 @@ export default function Pagos() {
         <div className="barra-filtros">
           <FiltroFechas desde={desde} hasta={hasta} onCambiar={(d, h) => { setDesde(d); setHasta(h) }} />
           <div style={{ flex: 1 }} />
-          <button className="act" onClick={() => { setForm({ ...VACIO, metodo: items[0]?.metodo || 'efectivo' }); setAbierto(true) }}><Plus size={15} strokeWidth={2} /> Registrar pago</button>
+          <button className="act" onClick={() => { setEditando(null); setForm({ ...VACIO, metodo: items[0]?.metodo || 'efectivo' }); setAbierto(true) }}><Plus size={15} strokeWidth={2} /> Registrar pago</button>
         </div>
       </div>
 
@@ -136,19 +154,19 @@ export default function Pagos() {
       {Object.keys(porMetodo).length > 0 && (
         <div className="card mb">
           <h2>Cómo le pagan</h2>
-          <div className="metodos">
-            {Object.entries(porMetodo).sort((a, b) => b[1] - a[1]).map(([m, v]) => (
-              <div className="metodo" key={m}>
-                <div className="metodo-cab">
-                  <span>{METODOS[m] || m}</span>
-                  <strong>{pesos(v)}</strong>
+          <div className="metodos-desglose">
+            {Object.entries(porMetodo).sort((a, b) => b[1] - a[1]).map(([m, v], i) => {
+              const pct = total > 0 ? Math.round((v / total) * 100) : 0
+              const color = COLORES_METODO[m] || COLORES_METODO._otros[i % COLORES_METODO._otros.length]
+              return (
+                <div className="metodo-fila" key={m}>
+                  <span className="metodo-dot" style={{ background: color }} />
+                  <span className="metodo-nom">{METODOS[m] || m}</span>
+                  <div className="metodo-barra-track"><div className="metodo-barra-fill" style={{ width: `${pct}%`, background: color }} /></div>
+                  <span className="metodo-val">{pesos(v)}<span className="metodo-pct">{pct}%</span></span>
                 </div>
-                <div className="progreso-pista">
-                  <div className="progreso-fill" style={{ width: `${total > 0 ? (v / total) * 100 : 0}%` }} />
-                </div>
-                <span className="sub">{total > 0 ? Math.round((v / total) * 100) : 0}% del total</span>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       )}
@@ -159,7 +177,7 @@ export default function Pagos() {
          items.length === 0 ? (
           <Vacio titulo="Sin pagos en este periodo"
             texto="Cambie el filtro de arriba o registre un pago nuevo."
-            accion={<button className="act" onClick={() => { setForm({ ...VACIO, metodo: items[0]?.metodo || 'efectivo' }); setAbierto(true) }}>Registrar pago</button>} />
+            accion={<button className="act" onClick={() => { setEditando(null); setForm({ ...VACIO, metodo: items[0]?.metodo || 'efectivo' }); setAbierto(true) }}>Registrar pago</button>} />
          ) : (
           <>
             <div className="hide-mobile-block tabla-scroll">
@@ -181,7 +199,9 @@ export default function Pagos() {
                           <td className="sub" data-label="Método">{METODOS[p.metodo] || p.metodo || '—'}</td>
                           <td className="num" data-label="Valor">{pesos(p.valor)}</td>
                           <td className="acciones">
-                            <button className="icono" title="Eliminar"
+                            <button className="icono" title="Editar"
+                              onClick={e => { e.stopPropagation(); abrirEditar(p) }}><IconoEditar /></button>
+                            <button className="icono danger" title="Eliminar"
                               onClick={e => { e.stopPropagation(); eliminar(p) }}><IconoEliminar /></button>
                           </td>
                         </tr>
@@ -211,7 +231,8 @@ export default function Pagos() {
                           </div>
                         </div>
                         <div className="fcm-actions" onClick={e => e.stopPropagation()}>
-                          <button className="icono" title="Eliminar" onClick={() => eliminar(p)}><IconoEliminar /></button>
+                          <button className="icono" title="Editar" onClick={() => abrirEditar(p)}><IconoEditar /></button>
+                          <button className="icono danger" title="Eliminar" onClick={() => eliminar(p)}><IconoEliminar /></button>
                         </div>
                       </div>
                     ))}
@@ -224,7 +245,9 @@ export default function Pagos() {
       </div>
 
       {abierto && (
-        <Modal titulo="Registrar pago" onCerrar={() => setAbierto(false)} onGuardar={guardar} guardando={guardando}>
+        <Modal titulo={editando ? 'Editar pago' : 'Registrar pago'}
+          onCerrar={() => { setAbierto(false); setEditando(null) }}
+          onGuardar={guardar} guardando={guardando} textoGuardar={editando ? 'Guardar cambios' : 'Guardar'}>
           <div className="grid" style={{ gap: 14 }}>
             <Campo label="Paciente">
               <select value={form.paciente_id} onChange={set('paciente_id')} autoFocus>

@@ -1,15 +1,15 @@
-import { hoy } from '../lib/format'
+import { hoy, fechaLocal } from '../lib/format'
 import { CalendarRange } from 'lucide-react'
 
 function sumarDias(iso, n) {
   const d = new Date(iso + 'T00:00:00')
   d.setDate(d.getDate() + n)
-  return d.toISOString().slice(0, 10)
+  return fechaLocal(d)
 }
 function inicioMes(offsetMeses = 0) {
   const d = new Date()
   d.setMonth(d.getMonth() + offsetMeses, 1)
-  return d.toISOString().slice(0, 10)
+  return fechaLocal(d)
 }
 
 const PRESETS = [
