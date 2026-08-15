@@ -149,13 +149,16 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 }
 .sidebar-overlay.abierto{display:block}
 
-/* ---------- mostrar bloques distintos en escritorio vs. celular ---------- */
-.hide-mobile-block{display:block}
+/* ---------- mostrar bloques distintos en escritorio vs. celular ----------
+   Con !important a propósito: son clases utilitarias que deben ganar
+   siempre, sin importar qué otra clase (como .client-grid) se les
+   combine ni en qué orden del archivo aparezca esa otra clase. */
+.hide-mobile-block{display:block!important}
 .lista-vert{display:flex;flex-direction:column;gap:8px}
-.show-mobile-block{display:none}
+.show-mobile-block{display:none!important}
 @media(max-width:880px){
-  .hide-mobile-block{display:none}
-  .show-mobile-block{display:block}
+  .hide-mobile-block{display:none!important}
+  .show-mobile-block{display:flex!important}
 }
 
 /* ---------- tarjeta compacta de una sola fila (celular) ---------- */
@@ -459,7 +462,7 @@ tr.fila-vencida td{background:var(--clay-wash)}
   padding:8px 14px;border-radius:var(--r);transition:.15s;
 }
 .btn-buscar:hover{background:var(--paper);color:var(--ink);border-color:var(--line-strong)}
-.buscador-overlay{align-items:flex-start;padding-top:12vh}
+.overlay.buscador-overlay{align-items:flex-start;padding-top:12vh}
 .buscador{background:var(--surface);border-radius:14px;width:100%;max-width:520px;
           box-shadow:var(--shadow-md);overflow:hidden;animation:slideUp .2s cubic-bezier(.4,0,.2,1)}
 .buscador>input{border:0;border-radius:0;border-bottom:1px solid var(--line);
@@ -675,9 +678,11 @@ tr.clickable:hover td:first-child{box-shadow:inset 3px 0 0 var(--pine-soft)}
 }
 .client-card .acciones-fila:empty{display:none;margin-top:0;padding-top:0;border-top:0}
 
-/* carrusel horizontal de tarjetas de resumen, solo en celular */
+/* carrusel horizontal de tarjetas de resumen, solo en celular.
+   !important a propósito: siempre se combina con .grid/.g3/.g4, que
+   también definen display/gap — debe ganar sin depender del orden. */
 @media(max-width:880px){
-  .stats-car{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+  .stats-car{display:flex!important;gap:8px!important;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
   .stats-car::-webkit-scrollbar{display:none}
   .stats-car .stat{flex-shrink:0;min-width:148px}
 }
@@ -755,6 +760,23 @@ tr.fila-grupo-mes:hover td{background:var(--paper)}
 .loading{padding:40px;text-align:center;color:var(--ink-3);font-size:13.5px}
 
 /* ---------- odontograma ---------- */
+.odo-nota{
+  background:var(--amber-wash);border:1px solid #F0D9A8;border-radius:10px;
+  padding:12px 14px;margin-bottom:14px;
+}
+.odo-nota-titulo{
+  font-size:10.5px;font-weight:700;color:var(--amber);margin:0 0 5px;
+  text-transform:uppercase;letter-spacing:.04em;
+}
+.odo-nota-texto{font-size:13px;color:var(--ink);margin:0 0 10px;white-space:pre-wrap}
+.odo-nota-botones{display:flex;justify-content:flex-end;gap:8px}
+.odo-nota.editando textarea{width:100%;margin-bottom:10px;resize:vertical}
+.odo-nota-agregar{
+  width:100%;text-align:left;background:var(--paper);border:1px dashed var(--line-strong);
+  border-radius:10px;padding:11px 14px;font-size:12.5px;color:var(--ink-2);margin-bottom:14px;
+}
+.odo-nota-agregar:hover{background:var(--sage-wash);color:var(--pine-dark);border-color:var(--pine-soft)}
+
 .arcadas{display:flex;flex-direction:column;gap:7px;align-items:center}
 .arch{display:flex;justify-content:center}
 .quad{display:flex;gap:20px;align-items:flex-start}
@@ -809,7 +831,7 @@ tr.fila-grupo-mes:hover td{background:var(--paper)}
 .avatar{width:48px;height:48px;border-radius:50%;background:var(--sage-wash);color:var(--pine);
         display:flex;align-items:center;justify-content:center;
         font-weight:700;font-size:16px;flex-shrink:0}
-.avatar-sm{width:30px;height:30px;font-size:11px;font-family:inherit;font-weight:700}
+.avatar.avatar-sm{width:30px;height:30px;font-size:11px;font-family:inherit;font-weight:700}
 .patient-head .nm{font-weight:700;font-size:19px;line-height:1.25}
 .patient-head .meta{font-size:12.5px;color:var(--ink-2)}
 
@@ -891,7 +913,7 @@ tr.fila-grupo-mes:hover td{background:var(--paper)}
   .fab-nueva{display:flex}
   .btn-nueva-cita{display:none}
   .topbar{padding:0 12px;gap:8px}
-  .buscador-overlay{padding-top:6vh}
+  .overlay.buscador-overlay{padding-top:6vh}
   .patient-head .nm{font-size:20px}
   .patient-head > .act{flex:1;justify-content:center}
   .overlay:not(.buscador-overlay){align-items:flex-end;padding:0}
@@ -957,11 +979,11 @@ tr.fila-grupo-mes:hover td{background:var(--paper)}
 
   .main{padding:72px 9px 48px}
   .g2,.split{grid-template-columns:1fr}
-  .g3{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+  .g3{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px!important}
   .g3:has(.kv){grid-template-columns:1fr}
   .kv{flex-direction:column;align-items:flex-start;gap:2px}
   .kv .v{text-align:left}
-  .g4{grid-template-columns:1fr 1fr;gap:8px}
+  .g4{grid-template-columns:1fr 1fr;gap:8px!important}
   h1{font-size:23px}
   .stat{padding:11px 12px;border-radius:11px}
   .stat .k{font-size:9px;letter-spacing:.04em}

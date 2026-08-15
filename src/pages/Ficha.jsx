@@ -419,7 +419,11 @@ export default function Ficha() {
   const nombre = nombreCompleto(paciente)
   const años = edad(paciente.fecha_nacimiento)
   const planPendiente = plan.filter(x => x.estado !== 'hecho')
-  const planHecho = plan.filter(x => x.estado === 'hecho')
+  // Si un plan "hecho" ya quedó vinculado a una atención real (se hizo con el
+  // desplegable de "+ Atención"), esa atención ES el registro del cobro —
+  // no lo volvemos a mostrar aparte, o se duplicaría en el estado de cuenta.
+  const planesConAtencion = new Set(atenciones.map(a => a.plan_tratamiento_id).filter(Boolean))
+  const planHecho = plan.filter(x => x.estado === 'hecho' && !planesConAtencion.has(x.id))
   const totalPlanPendiente = planPendiente.reduce((s, x) => s + Number(x.valor || 0), 0)
   const totalPlanHecho = planHecho.reduce((s, x) => s + Number(x.valor || 0), 0)
   const totalAtenciones = atenciones.reduce((s, x) => s + Number(x.valor || 0), 0)

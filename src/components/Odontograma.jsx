@@ -11,6 +11,7 @@ const FILAS = [
 export const ROJO  = '#D42B1F'
 export const AZUL  = '#1B5FAA'
 export const VERDE = '#2E8B4A'
+export const NEGRO = '#000000'
 const color = (c) => (c === 'bueno' ? AZUL : ROJO)
 
 /* Estados sobre una cara del diente — según la tabla de convenciones */
@@ -20,7 +21,8 @@ export const CARAS = [
   { id: 'sellante',   nombre: 'Sellante',   malo: true,  bueno: true  },
 ]
 
-/* Estados sobre la pieza completa — según la tabla de convenciones */
+/* Estados sobre la pieza completa — según la tabla de convenciones.
+   "negro": true = una sola opción fija en negro (sin elegir rojo/azul). */
 export const PIEZAS = [
   { id: 'corona',              nombre: 'Corona',              malo: true,  bueno: true  },
   { id: 'provisional',         nombre: 'Provisional',         malo: true,  bueno: true  },
@@ -28,9 +30,12 @@ export const PIEZAS = [
   { id: 'perno',                nombre: 'Perno',               malo: true,  bueno: true  },
   { id: 'endodoncia',          nombre: 'Endodoncia',          malo: true,  bueno: true  },
   { id: 'extraccion_indicada', nombre: 'Extracción indicada', malo: true,  bueno: false },
-  { id: 'extraido',            nombre: 'Extraído',            malo: false, bueno: true  },
-  { id: 'sin_erupcionar',      nombre: 'Sin erupcionar',      malo: false, bueno: true  },
-  { id: 'en_erupcion',         nombre: 'En erupción',         malo: false, bueno: true, verde: true },
+  { id: 'implante',            nombre: 'Implante',            malo: true,  bueno: true  },
+  { id: 'retenido',            nombre: 'Retenido',            malo: true,  bueno: true  },
+  { id: 'extraido',            nombre: 'Extraído',            malo: false, bueno: false, negro: true },
+  { id: 'ausente',             nombre: 'Ausente',             malo: false, bueno: false, negro: true },
+  { id: 'sin_erupcionar',      nombre: 'Sin erupcionar',      malo: false, bueno: false, negro: true },
+  { id: 'en_erupcion',         nombre: 'En erupción',         malo: false, bueno: false, verde: true },
 ]
 
 /* ---------- geometría del círculo con 5 sectores ---------- */
@@ -67,7 +72,6 @@ function IconoMini({ id, c }) {
     case 'corona':      return <circle cx="9" cy="9" r="7" fill="none" stroke={c} strokeWidth="2" />
     case 'provisional': return <text x="9" y="12.5" textAnchor="middle" fill={c} style={t}>P</text>
     case 'perno':       return <text x="9" y="12.5" textAnchor="middle" fill={c} style={t}>N</text>
-    case 'extraido':    return <text x="9" y="12.5" textAnchor="middle" fill={c} style={t}>I</text>
     case 'protesis_removible': return <g>
       <line x1="3" y1="7" x2="15" y2="7" stroke={c} strokeWidth="1.8" />
       <line x1="3" y1="11" x2="15" y2="11" stroke={c} strokeWidth="1.8" />
@@ -77,7 +81,22 @@ function IconoMini({ id, c }) {
       <line x1="3" y1="3" x2="15" y2="15" stroke={c} strokeWidth="2" strokeLinecap="round" />
       <line x1="15" y1="3" x2="3" y2="15" stroke={c} strokeWidth="2" strokeLinecap="round" />
     </g>
-    case 'sin_erupcionar': return <line x1="3" y1="9" x2="15" y2="9" stroke={c} strokeWidth="2.2" strokeLinecap="round" />
+    case 'implante': return <g>
+      <line x1="9" y1="4" x2="9" y2="14" stroke={c} strokeWidth="1.8" />
+      <line x1="5" y1="4" x2="13" y2="4" stroke={c} strokeWidth="1.8" strokeLinecap="round" />
+      <line x1="5" y1="14" x2="13" y2="14" stroke={c} strokeWidth="1.8" strokeLinecap="round" />
+    </g>
+    case 'retenido': return <line x1="3" y1="9" x2="15" y2="9" stroke={c} strokeWidth="2.2" strokeLinecap="round" />
+    case 'sin_erupcionar': return <path d="M4 13 L9 5 L14 13" fill="none" stroke={c}
+      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    case 'ausente': return <g>
+      <circle cx="9" cy="9" r="6.5" fill="none" stroke={c} strokeWidth="1.8" />
+      <line x1="4.5" y1="13.5" x2="13.5" y2="4.5" stroke={c} strokeWidth="1.8" strokeLinecap="round" />
+    </g>
+    case 'extraido': return <g>
+      <line x1="4" y1="4" x2="14" y2="14" stroke={c} strokeWidth="2" strokeLinecap="round" />
+      <line x1="14" y1="4" x2="4" y2="14" stroke={c} strokeWidth="2" strokeLinecap="round" />
+    </g>
     case 'en_erupcion': return <path d="M9 15 V3 M5 7 L9 3 L13 7" fill="none" stroke={c}
       strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
     default: return null
@@ -88,7 +107,7 @@ function IconoMini({ id, c }) {
 function Diente({ pieza, estados, onTocar, temporal }) {
   const d = estados.diente
   const est = d?.estado
-  const col = d ? (est === 'en_erupcion' ? VERDE : color(d.condicion)) : null
+  const col = d ? (est === 'en_erupcion' ? VERDE : d.condicion === 'negro' ? NEGRO : color(d.condicion)) : null
   const tam = temporal ? 30 : 34
 
   const rellenoSector = (cara) => {
@@ -134,8 +153,21 @@ function Diente({ pieza, estados, onTocar, temporal }) {
           <line x1="31" y1="3" x2="3" y2="31" stroke={ROJO} strokeWidth="2.6" strokeLinecap="round" />
         </>}
         {est === 'sin_erupcionar' && (
-          <line x1="5" y1="17" x2="29" y2="17" stroke={AZUL} strokeWidth="2.6" strokeLinecap="round" />
+          <path d="M8 24 L17 8 L26 24" fill="none" stroke={NEGRO}
+            strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
         )}
+        {est === 'retenido' && (
+          <line x1="5" y1="17" x2="29" y2="17" stroke={col} strokeWidth="2.6" strokeLinecap="round" />
+        )}
+        {est === 'implante' && <>
+          <line x1="17" y1="8" x2="17" y2="26" stroke={col} strokeWidth="2.2" />
+          <line x1="10" y1="8" x2="24" y2="8" stroke={col} strokeWidth="2.2" strokeLinecap="round" />
+          <line x1="10" y1="26" x2="24" y2="26" stroke={col} strokeWidth="2.2" strokeLinecap="round" />
+        </>}
+        {est === 'ausente' && <>
+          <circle cx="17" cy="17" r="13" fill="none" stroke={NEGRO} strokeWidth="2" />
+          <line x1="8" y1="26" x2="26" y2="8" stroke={NEGRO} strokeWidth="2" strokeLinecap="round" />
+        </>}
         {est === 'endodoncia' && <polygon points="17,6 26,24 8,24" fill="none" stroke={col} strokeWidth="2.2" />}
         {est === 'en_erupcion' && (
           <path d="M17 27 V7 M11 13 L17 7 L23 13" fill="none" stroke={VERDE}
@@ -149,10 +181,10 @@ function Diente({ pieza, estados, onTocar, temporal }) {
           <text x="17" y="23" textAnchor="middle" fill={col}
             style={{ font: '600 17px Archivo, sans-serif' }}>P</text>
         )}
-        {est === 'extraido' && (
-          <text x="17" y="23" textAnchor="middle" fill={AZUL}
-            style={{ font: '600 17px Archivo, sans-serif' }}>I</text>
-        )}
+        {est === 'extraido' && <>
+          <line x1="8" y1="8" x2="26" y2="26" stroke={NEGRO} strokeWidth="2.6" strokeLinecap="round" />
+          <line x1="26" y1="8" x2="8" y2="26" stroke={NEGRO} strokeWidth="2.6" strokeLinecap="round" />
+        </>}
       </svg>
 
       <button className="num-pieza" onClick={(e) => onTocar(e, pieza, 'diente')}
@@ -198,6 +230,11 @@ function Menu({ menu, marcaActual, onElegir, onBorrar, onCerrar }) {
                   onClick={() => onElegir(o.id, 'bueno')}>
                   <svg viewBox="0 0 18 18" width="16" height="16"><IconoMini id={o.id} c={VERDE} /></svg>
                 </button>
+              ) : o.negro ? (
+                <button className="dot" aria-label={`${o.nombre} — negro`}
+                  onClick={() => onElegir(o.id, 'negro')}>
+                  <svg viewBox="0 0 18 18" width="16" height="16"><IconoMini id={o.id} c={NEGRO} /></svg>
+                </button>
               ) : <>
                 {o.malo && (
                   <button className="dot" aria-label={`${o.nombre} — rojo`}
@@ -223,6 +260,16 @@ function Menu({ menu, marcaActual, onElegir, onBorrar, onCerrar }) {
 /* ---------- odontograma completo ---------- */
 export default function Odontograma({ datos, onCambio }) {
   const [menu, setMenu] = useState(null)   // { pieza, cara, x, y }
+  const [editandoNota, setEditandoNota] = useState(false)
+  const notaGeneral = datos?.general?.general?.condicion || ''
+  const [borradorNota, setBorradorNota] = useState(notaGeneral)
+
+  const abrirNota = () => { setBorradorNota(notaGeneral); setEditandoNota(true) }
+  const guardarNota = () => {
+    const texto = borradorNota.trim()
+    onCambio('general', 'general', texto ? { estado: 'nota', condicion: texto } : null)
+    setEditandoNota(false)
+  }
 
   const abrir = (e, pieza, cara) => {
     e.stopPropagation()
@@ -246,6 +293,26 @@ export default function Odontograma({ datos, onCambio }) {
 
   return (
     <>
+      {editandoNota ? (
+        <div className="odo-nota editando">
+          <textarea value={borradorNota} onChange={e => setBorradorNota(e.target.value)}
+            placeholder="Ej: Paciente bruxista, usa férula nocturna. Sensibilidad generalizada en cuadrante superior derecho."
+            rows={3} autoFocus />
+          <div className="odo-nota-botones">
+            <button className="act ghost sm" onClick={() => setEditandoNota(false)}>Cancelar</button>
+            <button className="act sm" onClick={guardarNota}>Guardar nota</button>
+          </div>
+        </div>
+      ) : notaGeneral ? (
+        <div className="odo-nota">
+          <p className="odo-nota-titulo">Nota del odontograma</p>
+          <p className="odo-nota-texto">{notaGeneral}</p>
+          <button className="act ghost sm" onClick={abrirNota}>Editar nota</button>
+        </div>
+      ) : (
+        <button className="odo-nota-agregar" onClick={abrirNota}>+ Agregar nota general del odontograma</button>
+      )}
+
       <div className="arcadas">
         {FILAS.map((fila, i) => (
           <div className="arch" key={i}>

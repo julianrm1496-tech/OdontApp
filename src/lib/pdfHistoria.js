@@ -8,6 +8,7 @@ const NOMBRE_ESTADO_PIEZA = {
   corona: 'Corona', provisional: 'Provisional', protesis_removible: 'Prótesis removible',
   perno: 'Perno', endodoncia: 'Endodoncia', extraccion_indicada: 'Extracción indicada',
   extraido: 'Extraído', sin_erupcionar: 'Sin erupcionar', en_erupcion: 'En erupción',
+  implante: 'Implante', retenido: 'Retenido', ausente: 'Ausente',
 }
 
 function resumenOdontograma(dientes) {
@@ -97,6 +98,12 @@ export function generarPdfHistoria({ paciente, atenciones, plan, pagos, dientes 
   // ---------- odontograma (resumen textual) ----------
   saltoPagina()
   titulo('ODONTOGRAMA')
+  const notaGeneral = dientes?.general?.general?.condicion
+  if (notaGeneral) {
+    doc.setFontSize(9)
+    doc.text('Nota: ' + notaGeneral, margen, y, { maxWidth: 515 }); y += 16
+    doc.setFontSize(10)
+  }
   const resumen = resumenOdontograma(dientes)
   if (resumen.length === 0) {
     doc.text('Sin marcas registradas en el odontograma.', margen, y); y += 15
