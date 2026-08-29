@@ -89,10 +89,7 @@ function IconoMini({ id, c }) {
     case 'retenido': return <line x1="3" y1="9" x2="15" y2="9" stroke={c} strokeWidth="2.2" strokeLinecap="round" />
     case 'sin_erupcionar': return <path d="M4 13 L9 5 L14 13" fill="none" stroke={c}
       strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    case 'ausente': return <g>
-      <circle cx="9" cy="9" r="6.5" fill="none" stroke={c} strokeWidth="1.8" />
-      <line x1="4.5" y1="13.5" x2="13.5" y2="4.5" stroke={c} strokeWidth="1.8" strokeLinecap="round" />
-    </g>
+    case 'ausente': return <text x="9" y="12.5" textAnchor="middle" fill={c} style={t}>A</text>
     case 'extraido': return <g>
       <line x1="4" y1="4" x2="14" y2="14" stroke={c} strokeWidth="2" strokeLinecap="round" />
       <line x1="14" y1="4" x2="4" y2="14" stroke={c} strokeWidth="2" strokeLinecap="round" />
@@ -164,10 +161,10 @@ function Diente({ pieza, estados, onTocar, temporal }) {
           <line x1="10" y1="8" x2="24" y2="8" stroke={col} strokeWidth="2.2" strokeLinecap="round" />
           <line x1="10" y1="26" x2="24" y2="26" stroke={col} strokeWidth="2.2" strokeLinecap="round" />
         </>}
-        {est === 'ausente' && <>
-          <circle cx="17" cy="17" r="13" fill="none" stroke={NEGRO} strokeWidth="2" />
-          <line x1="8" y1="26" x2="26" y2="8" stroke={NEGRO} strokeWidth="2" strokeLinecap="round" />
-        </>}
+        {est === 'ausente' && (
+          <text x="17" y="23" textAnchor="middle" fill={NEGRO}
+            style={{ font: '700 17px Archivo, sans-serif' }}>A</text>
+        )}
         {est === 'endodoncia' && <polygon points="17,6 26,24 8,24" fill="none" stroke={col} strokeWidth="2.2" />}
         {est === 'en_erupcion' && (
           <path d="M17 27 V7 M11 13 L17 7 L23 13" fill="none" stroke={VERDE}
