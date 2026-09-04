@@ -3,7 +3,16 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { hoy, nombreCompleto, iniciales } from '../lib/format'
 import { Modal, Campo, Vacio, Cargando, useToast, IconoEliminar, useConfirmar } from '../components/ui'
-import { Plus, ChevronDown, CalendarDays } from 'lucide-react'
+import { Plus, ChevronDown, CalendarDays, Mail } from 'lucide-react'
+
+// Lucide no trae logos de marca — este es el ícono real de WhatsApp, en su verde oficial.
+function IconoWhatsapp({ size = 16 }) {
+  return (
+    <svg viewBox="0 0 32 32" width={size} height={size} fill="#25D366">
+      <path d="M16.004 3C9.05 3 3.4 8.65 3.4 15.604c0 2.42.67 4.68 1.83 6.61L3 29l7.02-2.19a12.55 12.55 0 0 0 5.98 1.52h.005c6.95 0 12.6-5.65 12.6-12.605C28.6 8.652 22.955 3 16.004 3Zm0 22.86h-.004a10.44 10.44 0 0 1-5.32-1.46l-.382-.227-3.965 1.238 1.264-3.865-.25-.398a10.42 10.42 0 0 1-1.6-5.544C5.747 9.77 10.34 5.18 16.007 5.18c2.79 0 5.41 1.09 7.38 3.06a10.37 10.37 0 0 1 3.055 7.365c0 5.667-4.61 10.256-10.437 10.256Zm5.723-7.688c-.313-.157-1.86-.918-2.148-1.023-.288-.105-.498-.157-.708.157-.21.313-.812 1.023-.996 1.233-.183.21-.366.236-.68.079-.312-.157-1.318-.486-2.51-1.548-.928-.827-1.554-1.848-1.737-2.16-.183-.314-.02-.483.137-.64.14-.14.313-.366.47-.55.157-.183.209-.313.313-.523.105-.21.052-.393-.026-.55-.078-.157-.708-1.705-.97-2.335-.255-.614-.514-.53-.708-.54l-.603-.01a1.16 1.16 0 0 0-.838.392c-.288.313-1.1 1.075-1.1 2.622s1.126 3.042 1.283 3.253c.157.21 2.216 3.384 5.37 4.746.75.324 1.335.518 1.79.663.752.239 1.436.205 1.977.124.603-.09 1.86-.76 2.122-1.494.262-.734.262-1.363.183-1.494-.078-.13-.288-.209-.6-.365Z" />
+    </svg>
+  )
+}
 
 const ESTADOS = {
   pendiente:  { label: 'Pendiente',  color: 'var(--amber)', wash: 'var(--amber-wash)' },
@@ -45,6 +54,34 @@ function mesLegible(iso) {
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
+function fechaCorta(iso) {
+  const d = new Date(iso + 'T00:00:00')
+  const s = d.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' })
+  return s.charAt(0).toUpperCase() + s.slice(1)
+}
+
+// Deja el teléfono en formato internacional para wa.me (57 + 10 dígitos)
+function telefonoWhatsapp(tel) {
+  const solo = (tel || '').replace(/\D/g, '')
+  if (!solo) return null
+  if (solo.length === 10) return '57' + solo
+  if (solo.length === 12 && solo.startsWith('57')) return solo
+  return solo
+}
+
+// Nombre de la doctora que firma los recordatorios — cámbialo aquí si algún día cambia.
+const NOMBRE_DOCTORA = 'María Paula Martínez'
+
+function mensajeRecordatorio(nombre, fecha, hora) {
+  return `Hola ${nombre}, te recordamos tu cita odontológica el ${fechaCorta(fecha)} a las ${hora}. `
+       + `Si necesitas reprogramarla, avísanos con anticipación. ¡Te esperamos!\n\n${NOMBRE_DOCTORA}`
+}
+
+const linkWhatsapp = (tel, msg) => `https://web.whatsapp.com/send?phone=${tel}&text=${encodeURIComponent(msg)}`
+const linkCorreo = (correo, msg) =>
+  `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(correo)}`
+  + `&su=${encodeURIComponent('Recordatorio de tu cita')}&body=${encodeURIComponent(msg)}`
+
 const aMinutos = (hhmm) => {
   const [h, m] = hhmm.split(':').map(Number)
   return h * 60 + m
@@ -74,6 +111,7 @@ export default function Agenda() {
   const [pacientes, setPacientes] = useState([])
   const [abierto, setAbierto] = useState(false)
   const [form, setForm] = useState(VACIO)
+  const [buscaPaciente, setBuscaPaciente] = useState('')
   const [guardando, setGuardando] = useState(false)
   const [mostrarSemana, setMostrarSemana] = useState(false)
   const navegar = useNavigate()
@@ -88,7 +126,7 @@ export default function Agenda() {
   const cargar = async () => {
     const [c, p] = await Promise.all([
       supabase.from('citas')
-        .select('*, pacientes(primer_nombre, segundo_nombre, primer_apellido, segundo_apellido)')
+        .select('*, pacientes(primer_nombre, segundo_nombre, primer_apellido, segundo_apellido, telefono, correo)')
         .gte('fecha', desde).lte('fecha', hasta).order('fecha').order('hora'),
       supabase.from('pacientes').select('id, primer_nombre, segundo_nombre, primer_apellido, segundo_apellido')
         .order('primer_apellido'),
@@ -102,6 +140,7 @@ export default function Agenda() {
 
   const abrirNueva = (f = fecha, hora) => {
     setForm({ ...VACIO, fecha: f, hora: hora || '09:00' })
+    setBuscaPaciente('')
     setAbierto(true)
   }
 
@@ -215,6 +254,25 @@ export default function Agenda() {
                         value={c.estado} onChange={e => cambiarEstado(c, e.target.value)}>
                         {Object.entries(ESTADOS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
                       </select>
+                      {(() => {
+                        const tel = telefonoWhatsapp(c.pacientes?.telefono)
+                        const correo = c.pacientes?.correo
+                        const msg = mensajeRecordatorio(nombre, c.fecha, c.hora)
+                        return <>
+                          {tel && (
+                            <a className="icono whatsapp" title="Enviar recordatorio por WhatsApp"
+                              href={linkWhatsapp(tel, msg)} target="whatsapp-odontapp" rel="noreferrer">
+                              <IconoWhatsapp size={16} />
+                            </a>
+                          )}
+                          {correo && (
+                            <a className="icono correo" title="Enviar recordatorio por correo (Gmail)"
+                              href={linkCorreo(correo, msg)} target="gmail-odontapp" rel="noreferrer">
+                              <Mail size={15} strokeWidth={2} />
+                            </a>
+                          )}
+                        </>
+                      })()}
                       <button className="icono danger" title="Eliminar" onClick={() => eliminar(c)}><IconoEliminar /></button>
                     </div>
                   </div>
@@ -282,13 +340,34 @@ export default function Agenda() {
       {abierto && (
         <Modal titulo="Nueva cita" onCerrar={() => setAbierto(false)} onGuardar={guardar} guardando={guardando}>
           <div className="grid" style={{ gap: 14 }}>
-            <Campo label="Paciente registrado">
-              <select value={form.paciente_id}
-                onChange={e => setForm(f => ({ ...f, paciente_id: e.target.value, paciente_nombre: '' }))} autoFocus>
-                <option value="">— O escriba el nombre abajo —</option>
-                {pacientes.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
-              </select>
-            </Campo>
+            {form.paciente_id ? (
+              <Campo label="Paciente registrado">
+                <div className="chip-paciente">
+                  <span>{pacientes.find(p => p.id === form.paciente_id)?.nombre}</span>
+                  <button type="button" onClick={() => setForm(f => ({ ...f, paciente_id: '' }))}>Cambiar</button>
+                </div>
+              </Campo>
+            ) : (
+              <Campo label="Buscar paciente registrado">
+                <input value={buscaPaciente} onChange={e => setBuscaPaciente(e.target.value)}
+                  placeholder="Escriba el nombre..." autoFocus />
+                {buscaPaciente.trim().length > 0 && (
+                  <div className="lista-buscar-paciente">
+                    {pacientes.filter(p => p.nombre.toLowerCase().includes(buscaPaciente.trim().toLowerCase())).length === 0 ? (
+                      <div className="sin-resultado">Sin coincidencias — puede escribir el nombre abajo como paciente nuevo</div>
+                    ) : pacientes
+                        .filter(p => p.nombre.toLowerCase().includes(buscaPaciente.trim().toLowerCase()))
+                        .slice(0, 8)
+                        .map(p => (
+                          <div key={p.id} className="opcion-buscar-paciente"
+                            onClick={() => { setForm(f => ({ ...f, paciente_id: p.id, paciente_nombre: '' })); setBuscaPaciente('') }}>
+                            {p.nombre}
+                          </div>
+                        ))}
+                  </div>
+                )}
+              </Campo>
+            )}
             {!form.paciente_id && (
               <Campo label="O nombre de alguien nuevo">
                 <input value={form.paciente_nombre} onChange={set('paciente_nombre')} placeholder="Nombre y apellido" />

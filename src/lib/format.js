@@ -58,6 +58,16 @@ export function edad(nacimiento) {
   return e
 }
 
+// Normaliza "JUAN CARLOS" o "juan carlos" -> "Juan Carlos". Se usa al guardar
+// un paciente, para que no queden nombres en mayúscula sostenida por venir
+// de un Excel o por hábito al escribir.
+export function nombrePropio(s) {
+  if (!s) return s
+  return s.trim().replace(/\s+/g, ' ')
+    .toLowerCase()
+    .replace(/(^|[\s'-])([a-záéíóúñü])/g, (m, sep, letra) => sep + letra.toUpperCase())
+}
+
 export function nombreCompleto(p) {
   if (!p) return ''
   return [p.primer_nombre, p.segundo_nombre, p.primer_apellido, p.segundo_apellido]

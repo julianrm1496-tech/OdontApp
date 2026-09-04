@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { fecha, hoy, pesos, nombreCompleto, iniciales } from '../lib/format'
+import { fecha, hoy, pesos, nombreCompleto, nombrePropio, iniciales } from '../lib/format'
 import { LOCALIDADES, TIPOS_DOCUMENTO } from '../lib/catalogos'
 import { Modal, Campo, Vacio, Cargando, useToast, IconoEditar, IconoEliminar } from '../components/ui'
 import { ChevronRight, MoreVertical, Plus } from 'lucide-react'
@@ -12,7 +12,7 @@ export const PACIENTE_VACIO = {
   estado_civil: '', grupo_sanguineo: '', ocupacion: '',
   telefono: '', correo: '', direccion: '', localidad: '', zona_residencia: 'U',
   tipo_usuario: 'particular', eps: '',
-  responsable: '', responsable_tel: '', acompanante: '', acompanante_tel: '',
+  responsable: '', responsable_tel: '', acompanante: '', acompanante_tel: '', parentesco_acompanante: '',
   patologia: '', farmacoterapia: '', alergia: '', cirugias: '',
   trauma: '', antecedentes: '', ocupacion_familia: '', otro: '',
 }
@@ -47,6 +47,7 @@ export function FormPaciente({ form, set }) {
         <Campo label="Grupo sanguíneo"><input value={form.grupo_sanguineo} onChange={set('grupo_sanguineo')} placeholder="O+" /></Campo>
         <Campo label="Ocupación"><input value={form.ocupacion} onChange={set('ocupacion')} placeholder="Independiente" /></Campo>
         <Campo label="Teléfono"><input value={form.telefono} onChange={set('telefono')} inputMode="tel" placeholder="310 000 0000" /></Campo>
+        <Campo label="Correo"><input value={form.correo} onChange={set('correo')} type="email" placeholder="paciente@correo.com" /></Campo>
       </div>
 
       <p className="grupo">Residencia y afiliación</p>
@@ -78,6 +79,7 @@ export function FormPaciente({ form, set }) {
         <Campo label="Responsable"><input value={form.responsable} onChange={set('responsable')} /></Campo>
         <Campo label="Celular del responsable"><input value={form.responsable_tel} onChange={set('responsable_tel')} /></Campo>
         <Campo label="Acompañante"><input value={form.acompanante} onChange={set('acompanante')} /></Campo>
+        <Campo label="Parentesco del acompañante"><input value={form.parentesco_acompanante} onChange={set('parentesco_acompanante')} placeholder="Ej: Madre, Esposo, Hijo..." /></Campo>
         <Campo label="Celular del acompañante"><input value={form.acompanante_tel} onChange={set('acompanante_tel')} /></Campo>
       </div>
 
@@ -142,7 +144,13 @@ export default function Pacientes() {
       toast('Nombre, apellido y documento son obligatorios'); return
     }
     setGuardando(true)
-    const payload = { ...form, fecha_nacimiento: form.fecha_nacimiento || null }
+    const payload = {
+      ...form, fecha_nacimiento: form.fecha_nacimiento || null,
+      primer_nombre: nombrePropio(form.primer_nombre),
+      segundo_nombre: form.segundo_nombre ? nombrePropio(form.segundo_nombre) : null,
+      primer_apellido: nombrePropio(form.primer_apellido),
+      segundo_apellido: form.segundo_apellido ? nombrePropio(form.segundo_apellido) : null,
+    }
     if (payload.tipo_usuario !== 'eps') payload.eps = null
 
     if (editandoId) {

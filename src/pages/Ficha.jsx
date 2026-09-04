@@ -6,6 +6,7 @@ import { CUPS, CIE10, GRUPOS_SERVICIO, FINALIDADES_RIPS } from '../lib/catalogos
 import { Modal, Campo, Vacio, Cargando, useToast, useConfirmar, IconoEditar, IconoEliminar } from '../components/ui'
 import { FormPaciente, PACIENTE_VACIO } from './Pacientes'
 import Odontograma from '../components/Odontograma'
+import FormulasMedicas from '../components/FormulasMedicas'
 import Radiografias from '../components/Radiografias'
 import { generarPdfHistoria } from '../lib/pdfHistoria'
 import { Plus } from 'lucide-react'
@@ -69,32 +70,39 @@ export default function Ficha() {
     const mapa = {}
     ;(o.data || []).forEach(d => {
       if (!mapa[d.pieza]) mapa[d.pieza] = {}
-      mapa[d.pieza][d.cara] = { estado: d.estado, condicion: d.condicion }
+      if (!mapa[d.pieza][d.cara]) mapa[d.pieza][d.cara] = []
+      mapa[d.pieza][d.cara].push({ estado: d.estado, condicion: d.condicion })
     })
     setDientes(mapa)
   }
 
   /* ---------- odontograma ---------- */
-  const marcar = async (pieza, cara, valor) => {
-    const previo = dientes[pieza]?.[cara]
+  // marcar(pieza, cara, estado, condicion): condicion=null borra esa marca puntual;
+  // cualquier otro valor la agrega o le cambia el color. Varias marcas pueden
+  // convivir en la misma pieza/cara (ej. Corona + Endodoncia a la vez).
+  const marcar = async (pieza, cara, estado, condicion) => {
+    const previo = dientes[pieza]?.[cara] || []
+    const sinEsta = previo.filter(m => m.estado !== estado)
+    const nuevoArreglo = condicion ? [...sinEsta, { estado, condicion }] : sinEsta
+
     setDientes(d => {
       const caras = { ...(d[pieza] || {}) }
-      if (valor) caras[cara] = valor; else delete caras[cara]
+      caras[cara] = nuevoArreglo
       return { ...d, [pieza]: caras }
     })
 
-    const { error } = valor
+    const { error } = condicion
       ? await supabase.from('odontograma').upsert(
-          { paciente_id: id, pieza, cara, estado: valor.estado, condicion: valor.condicion,
+          { paciente_id: id, pieza, cara, estado, condicion,
             actualizado: new Date().toISOString() },
-          { onConflict: 'paciente_id,pieza,cara' })
+          { onConflict: 'paciente_id,pieza,cara,estado' })
       : await supabase.from('odontograma').delete()
-          .eq('paciente_id', id).eq('pieza', pieza).eq('cara', cara)
+          .eq('paciente_id', id).eq('pieza', pieza).eq('cara', cara).eq('estado', estado)
 
     if (error) {
       setDientes(d => {
         const caras = { ...(d[pieza] || {}) }
-        if (previo) caras[cara] = previo; else delete caras[cara]
+        caras[cara] = previo
         return { ...d, [pieza]: caras }
       })
       toast('No se pudo guardar el cambio')
@@ -529,6 +537,7 @@ export default function Ficha() {
         <div className="grid g2">
           <div>
             <div className="kv"><span className="k">Teléfono</span><span className="v">{paciente.telefono || '—'}</span></div>
+            <div className="kv"><span className="k">Correo</span><span className="v">{paciente.correo || '—'}</span></div>
             <div className="kv"><span className="k">Dirección</span><span className="v">{paciente.direccion || '—'}</span></div>
             <div className="kv"><span className="k">Localidad</span><span className="v">{paciente.localidad || '—'}</span></div>
             <div className="kv"><span className="k">Ocupación</span><span className="v">{paciente.ocupacion || '—'}</span></div>
@@ -537,7 +546,9 @@ export default function Ficha() {
             <div className="kv"><span className="k">Grupo sanguíneo</span><span className="v">{paciente.grupo_sanguineo || '—'}</span></div>
             <div className="kv"><span className="k">Estado civil</span><span className="v">{paciente.estado_civil || '—'}</span></div>
             <div className="kv"><span className="k">Responsable</span><span className="v">{paciente.responsable || '—'}</span></div>
-            <div className="kv"><span className="k">Acompañante</span><span className="v">{paciente.acompanante || '—'}</span></div>
+            <div className="kv"><span className="k">Acompañante</span><span className="v">
+              {paciente.acompanante ? `${paciente.acompanante}${paciente.parentesco_acompanante ? ` (${paciente.parentesco_acompanante})` : ''}` : '—'}
+            </span></div>
           </div>
         </div>
 
@@ -563,6 +574,8 @@ export default function Ficha() {
       </div>
 
       <Radiografias pacienteId={id} />
+
+      <FormulasMedicas pacienteId={id} paciente={paciente} />
 
       {/* ---------- CUENTA DEL PACIENTE ---------- */}
       <div className="card mb">

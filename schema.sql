@@ -49,6 +49,7 @@ create table if not exists pacientes (
   responsable       text,
   responsable_tel   text,
   acompanante       text,
+  parentesco_acompanante text,        -- ej: madre, esposo, hijo...
   acompanante_tel   text,
   -- tabla de alteraciones del formato en papel
   patologia         text,
@@ -122,9 +123,9 @@ create table if not exists odontograma (
   pieza         text not null,     -- FDI: permanentes 11-48, temporales 51-85
   cara          text not null,     -- diente | v | l | m | d | o
   estado        text not null,
-  condicion     text not null default 'malo',   -- malo (rojo) | bueno (azul)
+  condicion     text not null default 'malo',   -- malo (rojo) | bueno (azul) | negro | verde
   actualizado   timestamptz not null default now(),
-  unique (paciente_id, pieza, cara)
+  unique (paciente_id, pieza, cara, estado)   -- una pieza/cara puede tener varios estados a la vez
 );
 
 create index if not exists idx_odonto_paciente on odontograma (paciente_id);
@@ -138,6 +139,15 @@ create index if not exists idx_odonto_paciente on odontograma (paciente_id);
 -- 'en_erupcion' siempre se pinta verde, sin importar condicion.
 
 -- ---------- IMÁGENES Y RADIOGRAFÍAS ----------
+create table if not exists formulas_medicas (
+  id            uuid primary key default gen_random_uuid(),
+  paciente_id   uuid not null references pacientes(id) on delete cascade,
+  fecha         date not null,
+  medicamentos  jsonb not null default '[]',   -- [{nombre, dosificacion}]
+  recomendacion text,
+  creado_en     timestamptz not null default now()
+);
+
 create table if not exists imagenes (
   id           uuid primary key default gen_random_uuid(),
   paciente_id  uuid not null references pacientes(id) on delete cascade,

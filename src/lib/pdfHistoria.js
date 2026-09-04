@@ -3,23 +3,28 @@ import autoTable from 'jspdf-autotable'
 import { fecha, hoy, pesos, edad, nombreCompleto } from './format'
 
 const NOMBRE_CARA = { v: 'Vestibular', d: 'Distal', l: 'Lingual', m: 'Mesial', o: 'Oclusal' }
-const NOMBRE_ESTADO_CARA = { caries: 'Caries', obturacion: 'Obturación', sellante: 'Sellante' }
+const NOMBRE_ESTADO_CARA = { caries: 'Caries', resina: 'Resina', amalgama: 'Amalgama', sellante: 'Sellante', desgaste: 'Desgaste' }
 const NOMBRE_ESTADO_PIEZA = {
   corona: 'Corona', provisional: 'Provisional', protesis_removible: 'Prótesis removible',
   perno: 'Perno', endodoncia: 'Endodoncia', extraccion_indicada: 'Extracción indicada',
   extraido: 'Extraído', sin_erupcionar: 'Sin erupcionar', en_erupcion: 'En erupción',
-  implante: 'Implante', retenido: 'Retenido', ausente: 'Ausente',
+  implante: 'Implante', retenido: 'Retenedor', ausente: 'Ausente', sano: 'Sano',
 }
 
 function resumenOdontograma(dientes) {
   const lineas = []
   Object.entries(dientes || {}).forEach(([pieza, caras]) => {
-    Object.entries(caras || {}).forEach(([cara, m]) => {
-      if (!m) return
-      const cond = m.condicion === 'bueno' ? 'buen estado' : 'mal estado / por hacer'
-      const nombre = cara === 'diente' ? NOMBRE_ESTADO_PIEZA[m.estado] : NOMBRE_ESTADO_CARA[m.estado]
-      const parte = cara === 'diente' ? '' : ` (${NOMBRE_CARA[cara]})`
-      if (nombre) lineas.push(`Pieza ${pieza}${parte} — ${nombre}, ${cond}`)
+    Object.entries(caras || {}).forEach(([cara, marcas]) => {
+      if (!Array.isArray(marcas)) return
+      marcas.forEach(m => {
+        if (!m) return
+        const cond = m.condicion === 'bueno' ? 'buen estado'
+          : m.condicion === 'existente' ? 'ya la traía'
+          : m.condicion === 'negro' || m.condicion === 'verde' ? null : 'mal estado / por hacer'
+        const nombre = cara === 'diente' ? NOMBRE_ESTADO_PIEZA[m.estado] : NOMBRE_ESTADO_CARA[m.estado]
+        const parte = cara === 'diente' ? '' : ` (${NOMBRE_CARA[cara]})`
+        if (nombre) lineas.push(`Pieza ${pieza}${parte} — ${nombre}${cond ? `, ${cond}` : ''}`)
+      })
     })
   })
   return lineas
@@ -98,7 +103,7 @@ export function generarPdfHistoria({ paciente, atenciones, plan, pagos, dientes 
   // ---------- odontograma (resumen textual) ----------
   saltoPagina()
   titulo('ODONTOGRAMA')
-  const notaGeneral = dientes?.general?.general?.condicion
+  const notaGeneral = dientes?.general?.general?.[0]?.condicion
   if (notaGeneral) {
     doc.setFontSize(9)
     doc.text('Nota: ' + notaGeneral, margen, y, { maxWidth: 515 }); y += 16
